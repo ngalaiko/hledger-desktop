@@ -13,7 +13,25 @@ fn test_valid_price() {
             "",
             Price {
                 commodity: "EUR".to_string(),
-                date: NaiveDate::from_ymd(2017, 1, 1),
+                date: NaiveDate::from_ymd_opt(2017, 1, 1).unwrap(),
+                amount: Amount {
+                    currency: "SEK".to_string(),
+                    value: dec!(9.552532877),
+                }
+            }
+        )
+    );
+}
+
+#[test]
+fn test_valid_price_with_time() {
+    assert_eq!(
+        parse_price("P 2017-01-01 00:00:00 EUR SEK 9.552532877").unwrap(),
+        (
+            "",
+            Price {
+                commodity: "EUR".to_string(),
+                date: NaiveDate::from_ymd_opt(2017, 1, 1).unwrap(),
                 amount: Amount {
                     currency: "SEK".to_string(),
                     value: dec!(9.552532877),

@@ -43,6 +43,26 @@ fn test_correct_termination_parse_posting() {
 }
 
 #[test]
+fn test_parse_posting_with_comment() {
+    assert_eq!(
+        parse_posting(" assets:cash  $100 ;; gift").unwrap(),
+        (
+            "",
+            Posting {
+                status: Status::Unmarked,
+                account: "assets:cash".into(),
+                amount: Some(Amount {
+                    currency: "$".into(),
+                    value: dec!(100.0)
+                }),
+                unit_price: None,
+                total_price: None,
+            }
+        )
+    )
+}
+
+#[test]
 fn test_parse_posting_with_status() {
     assert_eq!(
         parse_posting(" ! assets:cash  $100").unwrap(),

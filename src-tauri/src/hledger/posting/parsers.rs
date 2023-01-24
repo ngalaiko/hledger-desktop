@@ -3,11 +3,12 @@ use nom::{
     bytes::complete::{is_not, tag, take_until},
     character::complete::{space0, space1},
     combinator::{map_res, opt, peek, success, verify},
-    sequence::{delimited, pair, preceded, separated_pair, terminated, tuple},
+    sequence::{delimited, preceded, separated_pair, terminated, tuple},
 };
 
 use crate::hledger::{
-    amount::parsers::parse_amount, status::parsers::parse_status, HLParserError, HLParserIResult,
+    amount::parsers::parse_amount, comment::parsers::parse_line_comment,
+    status::parsers::parse_status, HLParserError, HLParserIResult,
 };
 
 use super::types::{Posting, PostingComplexAmount};
@@ -76,10 +77,11 @@ fn parse_posting_without_amount(
 }
 
 pub fn parse_posting(input: &str) -> HLParserIResult<&str, Posting> {
-    let (tail, (status, (account_name, complex_amount))) = pair(
+    let (tail, (status, (account_name, complex_amount), _comment)) = tuple((
         delimited(space1, parse_status, space0),
         alt((parse_posting_with_amount, parse_posting_without_amount)),
-    )(input)?;
+        opt(preceded(space0, parse_line_comment)),
+    ))(input)?;
 
     Ok((
         tail,

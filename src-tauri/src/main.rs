@@ -15,6 +15,19 @@ fn get_ledger_file() -> Option<String> {
 }
 
 #[tauri::command]
+fn resolve_glob_pattern(pattern: &str) -> Result<Vec<PathBuf>, InvokeError> {
+    let paths = glob::glob(pattern);
+    if paths.is_ok() {
+        return Ok(paths.unwrap()
+            .filter_map(|path| path.ok())
+            .map(|path| path.to_path_buf())
+            .collect::<Vec<PathBuf>>());
+    } else {
+        return Err("invalid glob pattern".into());
+    }
+}
+
+#[tauri::command]
 fn read_file(file_path: &str) -> Result<String, InvokeError> {
     let contents = fs::read_to_string(file_path);
     if contents.is_ok() {
@@ -40,7 +53,8 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             get_ledger_file,
             read_file,
-            parse_hledger_file
+            parse_hledger_file,
+            resolve_glob_pattern,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

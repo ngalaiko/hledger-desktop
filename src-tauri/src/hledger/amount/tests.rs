@@ -225,6 +225,14 @@ fn test_parse_money_amount_double() {
 }
 
 #[test]
+fn test_parse_money_amount_negative() {
+    assert_eq!(
+        parse_money_amount("-100.00").unwrap(),
+        ("", dec!(-100.0))
+    );
+}
+
+#[test]
 fn test_parse_money_amount_empty_fraction() {
     assert_eq!(
         parse_money_amount("100,000.").unwrap(),

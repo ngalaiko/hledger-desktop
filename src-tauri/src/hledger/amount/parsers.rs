@@ -19,7 +19,8 @@ use crate::hledger::{
 use super::types::{Amount, AmountSign};
 
 pub fn parse_money_amount(input: &str) -> HLParserIResult<&str, Decimal> {
-    let (tail, (mut parts, fin)) = tuple((
+    let (tail, (minus, mut parts, fin)) = tuple((
+        opt(char('-')),
         separated_list1(alt((char(','), char('.'), char(' '))), digit1),
         opt(alt((char('.'), char(',')))),
     ))(input)?;
@@ -36,7 +37,12 @@ pub fn parse_money_amount(input: &str) -> HLParserIResult<&str, Decimal> {
         .parse::<i64>()
         .unwrap_or(0);
 
-    let value = format!("{}.{}", num, scale.unwrap_or("0"));
+    let value = format!(
+        "{}{}.{}",
+        if minus.is_some() { "-" } else { "" },
+        num,
+        scale.unwrap_or("0")
+    );
     let value = Decimal::from_str(&value)
         .map_err(|_| nom::Err::Error(HLParserError::Parse(value.to_string(), ErrorKind::Float)))?;
 

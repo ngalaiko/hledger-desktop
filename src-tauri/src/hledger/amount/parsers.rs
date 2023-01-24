@@ -3,9 +3,10 @@ use std::str::FromStr;
 use nom::{
     branch::alt,
     bytes::complete::take_till,
-    character::complete::{char, i64, space0, u64},
-    combinator::{opt, recognize},
+    character::complete::{char, digit1, space0},
+    combinator::opt,
     error::ErrorKind,
+    multi::separated_list1,
     sequence::{terminated, tuple},
 };
 use rust_decimal::Decimal;
@@ -18,11 +19,23 @@ use crate::hledger::{
 use super::types::{Amount, AmountSign};
 
 pub fn parse_money_amount(input: &str) -> HLParserIResult<&str, Decimal> {
-    let (tail, (num, _, scale)) = tuple((
-        recognize(i64),
+    let (tail, (mut parts, fin)) = tuple((
+        separated_list1(alt((char(','), char('.'), char(' '))), digit1),
         opt(alt((char('.'), char(',')))),
-        opt(recognize(u64)),
     ))(input)?;
+
+    let scale = if parts.len() > 1 && fin.is_none() {
+        parts.pop()
+    } else {
+        Some("0")
+    };
+    let num = parts
+        .iter()
+        .map(|&id| id.to_string())
+        .collect::<String>()
+        .parse::<i64>()
+        .unwrap_or(0);
+
     let value = format!("{}.{}", num, scale.unwrap_or("0"));
     let value = Decimal::from_str(&value)
         .map_err(|_| nom::Err::Error(HLParserError::Parse(value.to_string(), ErrorKind::Float)))?;

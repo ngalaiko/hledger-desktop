@@ -225,6 +225,22 @@ fn test_parse_money_amount_double() {
 }
 
 #[test]
+fn test_parse_money_amount_empty_fraction() {
+    assert_eq!(
+        parse_money_amount("100,000.").unwrap(),
+        ("", dec!(100000.0))
+    );
+}
+
+#[test]
+fn test_parse_money_amount_thousand_separator() {
+    assert_eq!(
+        parse_money_amount("100,000.00EUR").unwrap(),
+        ("EUR", dec!(100000.0))
+    );
+}
+
+#[test]
 fn test_parse_money_amount_small() {
     assert_eq!(
         parse_money_amount("0.007EUR").unwrap(),

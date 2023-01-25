@@ -1,12 +1,16 @@
 <script lang="ts">
     import { tauri } from "$lib";
     import { dirname, join } from "@tauri-apps/api/path";
+    import { FileSelector } from "$lib/components";
 </script>
 
 {#await tauri.getFilePath() then filepath}
-    {#if filepath === undefined}
-        <div>filepath not set</div>
-    {:else}
+    <FileSelector
+        value={filepath}
+        filters={[{ name: "hledger", extensions: ["ledger", "journal"] }]}
+    />
+
+    {#if filepath !== undefined}
         {#await tauri.parseJournal(filepath) then journal}
             <ul>
                 <li>

@@ -127,7 +127,11 @@ impl Transaction {
     }
 
     fn validate_postings(&self) -> Result<(), HLParserError> {
-        let none_amounts = self.postings.iter().filter(|p| p.amount.is_none()).count();
+        let none_amounts = self
+            .postings
+            .iter()
+            .filter(|p| p.amount.is_none() && p.balance_assertion.is_none())
+            .count();
 
         if none_amounts > 1_usize {
             return Err(HLParserError::Validation(format!(

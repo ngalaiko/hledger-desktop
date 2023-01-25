@@ -12,7 +12,7 @@ use crate::hledger::{
     comment::parsers::{parse_line_comment, parse_transaction_comment},
     date::parsers::parse_date,
     description::parsers::parse_description,
-    journal::{parsers::parse_comment_value, types::Value},
+    journal::types::Value,
     posting::parsers::parse_posting,
     status::parsers::parse_status,
     tag::{parsers::parse_tag, types::Tag},

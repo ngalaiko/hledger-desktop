@@ -2,7 +2,7 @@ use nom::{
     branch::alt,
     bytes::complete::{is_not, tag, take_until},
     character::complete::{space0, space1},
-    combinator::{map_res, opt, peek, success, verify},
+    combinator::{map_res, opt, peek, verify},
     sequence::{delimited, preceded, separated_pair, terminated, tuple},
 };
 
@@ -13,12 +13,8 @@ use crate::hledger::{
 
 use super::types::{Posting, PostingComplexAmount};
 
-fn parse_posting_with_amount(input: &str) -> HLParserIResult<&str, (&str, PostingComplexAmount)> {
-    let (tail, account_name) = verify(
-        terminated(take_until("  "), peek(preceded(space1, parse_amount))),
-        |s: &str| !s.contains('\n'),
-    )(input)?;
-    let (tail, complex_amount) = alt((
+fn parse_complex_amount(input: &str) -> HLParserIResult<&str, PostingComplexAmount> {
+    alt((
         // order of parsers is important
         map_res(
             separated_pair(
@@ -31,6 +27,7 @@ fn parse_posting_with_amount(input: &str) -> HLParserIResult<&str, (&str, Postin
                     amount: Some(amount),
                     unit_price: None,
                     total_price: Some(total_price),
+                    balance_assertion: None,
                 })
             },
         ),
@@ -45,6 +42,7 @@ fn parse_posting_with_amount(input: &str) -> HLParserIResult<&str, (&str, Postin
                     amount: Some(amount),
                     unit_price: Some(unit_price),
                     total_price: None,
+                    balance_assertion: None,
                 })
             },
         ),
@@ -55,9 +53,43 @@ fn parse_posting_with_amount(input: &str) -> HLParserIResult<&str, (&str, Postin
                     amount,
                     unit_price: None,
                     total_price: None,
+                    balance_assertion: None,
                 })
             },
         ),
+    ))(input)
+}
+
+fn parse_posting_with_amount(input: &str) -> HLParserIResult<&str, (&str, PostingComplexAmount)> {
+    let (tail, account_name) = verify(
+        terminated(take_until("  "), peek(preceded(space1, parse_amount))),
+        |s: &str| !s.contains('\n'),
+    )(input)?;
+
+    let (tail, complex_amount) = alt((
+        map_res(
+            separated_pair(
+                parse_complex_amount,
+                delimited(space0, tag("="), space0),
+                parse_amount,
+            ),
+            |(complex_amount, balance_assertion)| -> Result<PostingComplexAmount, HLParserError> {
+                Ok(PostingComplexAmount {
+                    amount: complex_amount.amount,
+                    unit_price: complex_amount.unit_price,
+                    total_price: complex_amount.total_price,
+                    balance_assertion: Some(balance_assertion),
+                })
+            },
+        ),
+        verify(parse_complex_amount, |complex_amount| {
+            !complex_amount
+                .amount
+                .as_ref()
+                .unwrap()
+                .currency
+                .contains("=") // that's weird
+        }),
     ))(tail)?;
 
     Ok((tail, (account_name, complex_amount)))
@@ -67,12 +99,18 @@ fn parse_posting_without_amount(
     input: &str,
 ) -> HLParserIResult<&str, (&str, PostingComplexAmount)> {
     tuple((
-        is_not("\n"),
-        success(PostingComplexAmount {
-            amount: None,
-            unit_price: None,
-            total_price: None,
-        }),
+        is_not("\n="),
+        map_res(
+            opt(preceded(delimited(space0, tag("="), space0), parse_amount)),
+            |balance_assertion| -> Result<PostingComplexAmount, HLParserError> {
+                Ok(PostingComplexAmount {
+                    amount: None,
+                    unit_price: None,
+                    total_price: None,
+                    balance_assertion,
+                })
+            },
+        ),
     ))(input)
 }
 
@@ -91,6 +129,7 @@ pub fn parse_posting(input: &str) -> HLParserIResult<&str, Posting> {
             amount: complex_amount.amount,
             unit_price: complex_amount.unit_price,
             total_price: complex_amount.total_price,
+            balance_assertion: complex_amount.balance_assertion,
         },
     ))
 }

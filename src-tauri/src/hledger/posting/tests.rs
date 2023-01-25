@@ -6,6 +6,72 @@ use crate::hledger::{amount::types::Amount, status::types::Status, HLParserError
 use super::{parsers::parse_posting, types::Posting};
 
 #[test]
+fn test_parse_posting_no_amount_with_balance_assertion_currency_suffix() {
+    assert_eq!(
+        parse_posting("    assets:cash  = 100.00 SEK").unwrap(),
+        (
+            "",
+            Posting {
+                status: Status::Unmarked,
+                account: "assets:cash".into(),
+                amount: None,
+                unit_price: None,
+                total_price: None,
+                balance_assertion: Some(Amount {
+                    currency: "SEK".into(),
+                    value: dec!(100),
+                })
+            }
+        )
+    )
+}
+
+#[test]
+fn test_parse_posting_no_amount_with_balance_assertion() {
+    assert_eq!(
+        parse_posting("    assets:cash   =   $100").unwrap(),
+        (
+            "",
+            Posting {
+                status: Status::Unmarked,
+                account: "assets:cash".into(),
+                amount: None,
+                unit_price: None,
+                total_price: None,
+                balance_assertion: Some(Amount {
+                    currency: "$".into(),
+                    value: dec!(100),
+                })
+            }
+        )
+    )
+}
+
+#[test]
+fn test_parse_posting_with_balance_assertion() {
+    assert_eq!(
+        parse_posting(" assets:cash  $100 = $100").unwrap(),
+        (
+            "",
+            Posting {
+                status: Status::Unmarked,
+                account: "assets:cash".into(),
+                amount: Some(Amount {
+                    currency: "$".into(),
+                    value: dec!(100),
+                }),
+                unit_price: None,
+                total_price: None,
+                balance_assertion: Some(Amount {
+                    currency: "$".into(),
+                    value: dec!(100),
+                })
+            }
+        )
+    )
+}
+
+#[test]
 fn test_parse_simple_posting() {
     assert_eq!(
         parse_posting(" assets:cash  $100").unwrap(),
@@ -20,6 +86,7 @@ fn test_parse_simple_posting() {
                 }),
                 unit_price: None,
                 total_price: None,
+                balance_assertion: None
             }
         )
     )
@@ -37,6 +104,7 @@ fn test_correct_termination_parse_posting() {
                 amount: None,
                 unit_price: None,
                 total_price: None,
+                balance_assertion: None
             }
         )
     )
@@ -57,6 +125,7 @@ fn test_parse_posting_with_comment() {
                 }),
                 unit_price: None,
                 total_price: None,
+                balance_assertion: None
             }
         )
     )
@@ -77,6 +146,7 @@ fn test_parse_posting_with_status() {
                 }),
                 unit_price: None,
                 total_price: None,
+                balance_assertion: None
             }
         )
     )
@@ -94,6 +164,7 @@ fn test_parse_posting_without_amount() {
                 amount: None,
                 unit_price: None,
                 total_price: None,
+                balance_assertion: None
             }
         )
     )
@@ -129,6 +200,7 @@ fn test_parse_posting_with_unit_price() {
                     value: dec!(0.94),
                 }),
                 total_price: None,
+                balance_assertion: None
             }
         )
     )
@@ -152,6 +224,7 @@ fn test_parse_posting_with_total_price() {
                     currency: "€".into(),
                     value: dec!(93.89),
                 }),
+                balance_assertion: None
             }
         )
     )

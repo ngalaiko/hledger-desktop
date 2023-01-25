@@ -35,7 +35,7 @@ fn test_parse_empty_line() {
 fn test_flatten_values() {
     let values = vec![
         Value::Transaction(Transaction {
-            primary_date: NaiveDate::from_ymd(2008, 1, 1),
+            primary_date: NaiveDate::from_ymd_opt(2008, 1, 1).unwrap(),
             secondary_date: None,
             code: None,
             status: Status::Unmarked,
@@ -53,6 +53,7 @@ fn test_flatten_values() {
                     status: Status::Unmarked,
                     unit_price: None,
                     total_price: None,
+                    balance_assertion: None,
                 },
                 Posting {
                     account: "income:salary".into(),
@@ -60,13 +61,14 @@ fn test_flatten_values() {
                     status: Status::Unmarked,
                     unit_price: None,
                     total_price: None,
+                    balance_assertion: None,
                 },
             ],
             tags: vec![],
         }),
         Value::Included(vec![
             Value::Transaction(Transaction {
-                primary_date: NaiveDate::from_ymd(2008, 1, 1),
+                primary_date: NaiveDate::from_ymd_opt(2008, 1, 1).unwrap(),
                 secondary_date: None,
                 code: None,
                 status: Status::Unmarked,
@@ -84,6 +86,7 @@ fn test_flatten_values() {
                         status: Status::Unmarked,
                         unit_price: None,
                         total_price: None,
+                        balance_assertion: None,
                     },
                     Posting {
                         account: "income:salary".into(),
@@ -91,12 +94,13 @@ fn test_flatten_values() {
                         status: Status::Unmarked,
                         unit_price: None,
                         total_price: None,
+                        balance_assertion: None,
                     },
                 ],
                 tags: vec![],
             }),
             Value::Included(vec![Value::Transaction(Transaction {
-                primary_date: NaiveDate::from_ymd(2008, 1, 1),
+                primary_date: NaiveDate::from_ymd_opt(2008, 1, 1).unwrap(),
                 secondary_date: None,
                 code: None,
                 status: Status::Unmarked,
@@ -114,6 +118,7 @@ fn test_flatten_values() {
                         status: Status::Unmarked,
                         unit_price: None,
                         total_price: None,
+                        balance_assertion: None,
                     },
                     Posting {
                         account: "income:salary".into(),
@@ -121,6 +126,7 @@ fn test_flatten_values() {
                         status: Status::Unmarked,
                         unit_price: None,
                         total_price: None,
+                        balance_assertion: None,
                     },
                 ],
                 tags: vec![],
@@ -131,7 +137,7 @@ fn test_flatten_values() {
         flatten_values(values),
         [
             Value::Transaction(Transaction {
-                primary_date: NaiveDate::from_ymd(2008, 1, 1),
+                primary_date: NaiveDate::from_ymd_opt(2008, 1, 1).unwrap(),
                 secondary_date: None,
                 code: None,
                 status: Status::Unmarked,
@@ -149,6 +155,7 @@ fn test_flatten_values() {
                         status: Status::Unmarked,
                         unit_price: None,
                         total_price: None,
+                        balance_assertion: None,
                     },
                     Posting {
                         account: "income:salary".into(),
@@ -156,12 +163,13 @@ fn test_flatten_values() {
                         status: Status::Unmarked,
                         unit_price: None,
                         total_price: None,
+                        balance_assertion: None,
                     },
                 ],
                 tags: vec![],
             }),
             Value::Transaction(Transaction {
-                primary_date: NaiveDate::from_ymd(2008, 1, 1),
+                primary_date: NaiveDate::from_ymd_opt(2008, 1, 1).unwrap(),
                 secondary_date: None,
                 code: None,
                 status: Status::Unmarked,
@@ -179,6 +187,7 @@ fn test_flatten_values() {
                         status: Status::Unmarked,
                         unit_price: None,
                         total_price: None,
+                        balance_assertion: None,
                     },
                     Posting {
                         account: "income:salary".into(),
@@ -186,12 +195,13 @@ fn test_flatten_values() {
                         status: Status::Unmarked,
                         unit_price: None,
                         total_price: None,
+                        balance_assertion: None,
                     },
                 ],
                 tags: vec![],
             }),
             Value::Transaction(Transaction {
-                primary_date: NaiveDate::from_ymd(2008, 1, 1),
+                primary_date: NaiveDate::from_ymd_opt(2008, 1, 1).unwrap(),
                 secondary_date: None,
                 code: None,
                 status: Status::Unmarked,
@@ -209,6 +219,7 @@ fn test_flatten_values() {
                         status: Status::Unmarked,
                         unit_price: None,
                         total_price: None,
+                        balance_assertion: None,
                     },
                     Posting {
                         account: "income:salary".into(),
@@ -216,6 +227,7 @@ fn test_flatten_values() {
                         status: Status::Unmarked,
                         unit_price: None,
                         total_price: None,
+                        balance_assertion: None,
                     },
                 ],
                 tags: vec![],
@@ -286,7 +298,7 @@ fn test_parse_journal_simple() {
         Journal::new(
             vec![
                 Transaction {
-                    primary_date: NaiveDate::from_ymd(2008, 1, 1),
+                    primary_date: NaiveDate::from_ymd_opt(2008, 1, 1).unwrap(),
                     secondary_date: None,
                     code: None,
                     status: Status::Unmarked,
@@ -304,6 +316,7 @@ fn test_parse_journal_simple() {
                             status: Status::Unmarked,
                             unit_price: None,
                             total_price: None,
+                            balance_assertion: None,
                         },
                         Posting {
                             account: "income:salary".into(),
@@ -311,12 +324,13 @@ fn test_parse_journal_simple() {
                             status: Status::Unmarked,
                             unit_price: None,
                             total_price: None,
+                            balance_assertion: None,
                         },
                     ],
                     tags: vec![],
                 },
                 Transaction {
-                    primary_date: NaiveDate::from_ymd(2008, 6, 1),
+                    primary_date: NaiveDate::from_ymd_opt(2008, 6, 1).unwrap(),
                     secondary_date: None,
                     code: None,
                     status: Status::Unmarked,
@@ -334,6 +348,7 @@ fn test_parse_journal_simple() {
                             status: Status::Unmarked,
                             unit_price: None,
                             total_price: None,
+                            balance_assertion: None,
                         },
                         Posting {
                             account: "income:gifts".into(),
@@ -341,12 +356,13 @@ fn test_parse_journal_simple() {
                             status: Status::Unmarked,
                             unit_price: None,
                             total_price: None,
+                            balance_assertion: None,
                         },
                     ],
                     tags: vec![],
                 },
                 Transaction {
-                    primary_date: NaiveDate::from_ymd(2008, 6, 2),
+                    primary_date: NaiveDate::from_ymd_opt(2008, 6, 2).unwrap(),
                     secondary_date: None,
                     code: None,
                     status: Status::Unmarked,
@@ -364,6 +380,7 @@ fn test_parse_journal_simple() {
                             status: Status::Unmarked,
                             unit_price: None,
                             total_price: None,
+                            balance_assertion: None,
                         },
                         Posting {
                             account: "assets:bank:checking".into(),
@@ -371,12 +388,13 @@ fn test_parse_journal_simple() {
                             status: Status::Unmarked,
                             unit_price: None,
                             total_price: None,
+                            balance_assertion: None,
                         },
                     ],
                     tags: vec![],
                 },
                 Transaction {
-                    primary_date: NaiveDate::from_ymd(2008, 6, 3),
+                    primary_date: NaiveDate::from_ymd_opt(2008, 6, 3).unwrap(),
                     secondary_date: None,
                     code: None,
                     status: Status::Cleared,
@@ -394,6 +412,7 @@ fn test_parse_journal_simple() {
                             status: Status::Unmarked,
                             unit_price: None,
                             total_price: None,
+                            balance_assertion: None,
                         },
                         Posting {
                             account: "expenses:supplies".into(),
@@ -404,6 +423,7 @@ fn test_parse_journal_simple() {
                             status: Status::Unmarked,
                             unit_price: None,
                             total_price: None,
+                            balance_assertion: None,
                         },
                         Posting {
                             account: "assets:cash".into(),
@@ -411,12 +431,13 @@ fn test_parse_journal_simple() {
                             status: Status::Unmarked,
                             unit_price: None,
                             total_price: None,
+                            balance_assertion: None,
                         },
                     ],
                     tags: vec![],
                 },
                 Transaction {
-                    primary_date: NaiveDate::from_ymd(2008, 12, 31),
+                    primary_date: NaiveDate::from_ymd_opt(2008, 12, 31).unwrap(),
                     secondary_date: None,
                     code: None,
                     status: Status::Cleared,
@@ -434,6 +455,7 @@ fn test_parse_journal_simple() {
                             status: Status::Unmarked,
                             unit_price: None,
                             total_price: None,
+                            balance_assertion: None,
                         },
                         Posting {
                             account: "assets:bank:checking".into(),
@@ -441,6 +463,7 @@ fn test_parse_journal_simple() {
                             status: Status::Unmarked,
                             unit_price: None,
                             total_price: None,
+                            balance_assertion: None,
                         },
                     ],
                     tags: vec![],

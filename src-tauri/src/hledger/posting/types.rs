@@ -47,6 +47,7 @@ pub struct Posting {
     pub amount: Option<Amount>,
     pub unit_price: Option<Amount>,
     pub total_price: Option<Amount>,
+    pub balance_assertion: Option<Amount>,
 }
 
 impl TryInto<Posting> for Value {
@@ -92,4 +93,5 @@ pub struct PostingComplexAmount {
     pub amount: Option<Amount>,
     pub unit_price: Option<Amount>,
     pub total_price: Option<Amount>,
+    pub balance_assertion: Option<Amount>,
 }

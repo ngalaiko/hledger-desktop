@@ -4,7 +4,7 @@ use serde::Serialize;
 
 use crate::hledger::{
     account::types::Account, commodity::types::Commodity, include::types::Include,
-    price::types::Price, transaction::types::Transaction, HLParserError,
+    price::types::Price, transaction::types::Transaction, HLParserError, Posting,
 };
 
 use super::parsers::parse_journal;
@@ -12,6 +12,7 @@ use super::parsers::parse_journal;
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub enum Value {
     Ignore,
+    Posting(Posting),
     Include(Include),
     Transaction(Transaction),
     Included(Vec<Value>),

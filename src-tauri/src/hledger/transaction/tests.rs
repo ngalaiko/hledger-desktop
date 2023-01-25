@@ -9,6 +9,56 @@ use crate::hledger::{
 use super::{parsers::parse_transaction, types::Transaction};
 
 #[test]
+fn test_transaction_with_line_comments() {
+    assert_eq!(
+        parse_transaction(
+            r#"2008/01/01 job | march
+    assets:bank:checking   $1 ; posting comment
+    ;
+    income:salary         $-1
+"#
+        )
+        .unwrap(),
+        (
+            "",
+            Transaction {
+                primary_date: NaiveDate::from_ymd_opt(2008, 1, 1).unwrap(),
+                secondary_date: None,
+                code: None,
+                description: Description {
+                    note: Some("march".into()),
+                    payee: Some("job".into()),
+                },
+                tags: vec![],
+                status: Status::Unmarked,
+                postings: vec![
+                    Posting {
+                        account: "assets:bank:checking".into(),
+                        status: Status::Unmarked,
+                        amount: Some(Amount {
+                            currency: "$".into(),
+                            value: dec!(1.0),
+                        }),
+                        unit_price: None,
+                        total_price: None,
+                    },
+                    Posting {
+                        account: "income:salary".into(),
+                        status: Status::Unmarked,
+                        amount: Some(Amount {
+                            currency: "$".into(),
+                            value: dec!(-1.0),
+                        }),
+                        unit_price: None,
+                        total_price: None,
+                    },
+                ],
+            }
+        )
+    )
+}
+
+#[test]
 fn test_transaction_with_payee() {
     assert_eq!(
         parse_transaction(

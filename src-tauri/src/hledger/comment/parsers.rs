@@ -16,5 +16,8 @@ pub fn parse_line_comment(input: &str) -> HLParserIResult<&str, &str> {
 }
 
 pub fn parse_transaction_comment(input: &str) -> HLParserIResult<&str, &str> {
-    preceded(char(';'), preceded(space0, rest))(input)
+    preceded(
+        space0,
+        preceded(char(';'), alt((preceded(space0, rest), rest))),
+    )(input)
 }

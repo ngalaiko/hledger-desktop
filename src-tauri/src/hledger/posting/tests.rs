@@ -45,7 +45,7 @@ fn test_correct_termination_parse_posting() {
 #[test]
 fn test_parse_posting_with_comment() {
     assert_eq!(
-        parse_posting(" assets:cash  $100 ;; gift").unwrap(),
+        parse_posting(" assets:cash  $100 ; posting comment").unwrap(),
         (
             "",
             Posting {

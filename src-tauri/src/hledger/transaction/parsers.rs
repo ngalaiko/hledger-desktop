@@ -1,21 +1,23 @@
 use nom::{
+    branch::alt,
     bytes::complete::tag,
     character::complete::{line_ending, not_line_ending, space0},
-    combinator::opt,
+    combinator::{map, opt, value},
     multi::{many0, separated_list0},
-    sequence::terminated,
+    sequence::{preceded, terminated},
 };
 
 use crate::hledger::{
     code::parsers::parse_code,
-    comment::parsers::parse_transaction_comment,
+    comment::parsers::{parse_line_comment, parse_transaction_comment},
     date::parsers::parse_date,
     description::parsers::parse_description,
+    journal::{parsers::parse_comment_value, types::Value},
     posting::parsers::parse_posting,
     status::parsers::parse_status,
     tag::{parsers::parse_tag, types::Tag},
     utils::split_on_space_before_char,
-    HLParserIResult,
+    HLParserIResult, Posting,
 };
 
 use super::types::Transaction;
@@ -49,8 +51,14 @@ pub fn parse_transaction(input: &str) -> HLParserIResult<&str, Transaction> {
 
     let (_, (_comment, tags)) =
         parse_comments_tags(comment_and_tags.unwrap_or("")).map_err(nom::Err::convert)?;
-    let (tail, postings) =
-        many0(terminated(parse_posting, line_ending))(tail).map_err(nom::Err::convert)?;
+    let (tail, postings) = many0(alt((
+        terminated(
+            value(Value::Ignore, preceded(space0, parse_line_comment)),
+            line_ending,
+        ),
+        terminated(map(parse_posting, Value::Posting), line_ending),
+    )))(tail)
+    .map_err(nom::Err::convert)?;
 
     let transaction = Transaction {
         primary_date,
@@ -59,7 +67,11 @@ pub fn parse_transaction(input: &str) -> HLParserIResult<&str, Transaction> {
         status,
         description,
         tags,
-        postings,
+        postings: postings
+            .iter()
+            .cloned()
+            .filter_map(|line| line.try_into().ok())
+            .collect::<Vec<Posting>>(),
     };
 
     transaction.validate().map_err(nom::Err::Error)?;

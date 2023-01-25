@@ -2,16 +2,18 @@ use std::fmt::Display;
 
 use serde::Serialize;
 
-use crate::hledger::{amount::types::Amount, status::types::Status, Account};
+use crate::hledger::{
+    amount::types::Amount, journal::types::Value, status::types::Status, Account, HLParserError,
+};
 
 /// Posting of a transaction
-/// 
+///
 /// # Example
-/// 
+///
 /// ```
 /// use rust_decimal_macros::dec;
 /// use hledger_parse::{Posting, Status, Amount};
-/// 
+///
 /// let posting = Posting {
 ///     status: Status::Pending,
 ///     account: "expenses:food".into(),
@@ -47,14 +49,40 @@ pub struct Posting {
     pub total_price: Option<Amount>,
 }
 
+impl TryInto<Posting> for Value {
+    type Error = HLParserError;
+
+    fn try_into(self) -> Result<Posting, Self::Error> {
+        if let Value::Posting(t) = self {
+            Ok(t)
+        } else {
+            Err(HLParserError::Extract(self))
+        }
+    }
+}
+
 impl Display for Posting {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match (self.amount.as_ref(), self.unit_price.as_ref(), self.total_price.as_ref()) {
+        match (
+            self.amount.as_ref(),
+            self.unit_price.as_ref(),
+            self.total_price.as_ref(),
+        ) {
             (None, None, None) => write!(f, "  {} {}", self.status, self.account),
-            (Some(amount), None, None) => write!(f, "  {} {}  {}", self.status, self.account, amount),
-            (Some(amount), Some(unit_price), None) => write!(f, "  {} {}  {} @ {}", self.status, self.account, amount, unit_price),
-            (Some(amount), None, Some(total_price)) => write!(f, "  {} {}  {} @@ {}", self.status, self.account, amount, total_price),
-            _ => unreachable!()
+            (Some(amount), None, None) => {
+                write!(f, "  {} {}  {}", self.status, self.account, amount)
+            }
+            (Some(amount), Some(unit_price), None) => write!(
+                f,
+                "  {} {}  {} @ {}",
+                self.status, self.account, amount, unit_price
+            ),
+            (Some(amount), None, Some(total_price)) => write!(
+                f,
+                "  {} {}  {} @@ {}",
+                self.status, self.account, amount, total_price
+            ),
+            _ => unreachable!(),
         }
     }
 }

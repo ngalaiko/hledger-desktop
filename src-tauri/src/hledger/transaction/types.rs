@@ -7,7 +7,7 @@ use serde::Serialize;
 
 use crate::hledger::{
     description::types::Description, journal::types::Value, posting::types::Posting,
-    status::types::Status, tag::types::Tag, HLParserError,
+    status::types::Status, tag::types::Tag, Amount, HLParserError,
 };
 
 /// Transaction information
@@ -144,7 +144,16 @@ impl Transaction {
             .postings
             .iter()
             .flat_map(|p| match &p.total_price {
-                Some(v) => Some(v.clone()),
+                Some(v) => Some(
+                    if p.amount.is_some() && p.amount.as_ref().unwrap().value > dec!(0) {
+                        v.clone()
+                    } else {
+                        Amount {
+                            value: dec!(-1) * v.clone().value,
+                            currency: v.clone().currency,
+                        }
+                    },
+                ),
                 None => p.amount.clone(),
             })
             .map(|a| a.value) // TODO: different currencies, conversion rates

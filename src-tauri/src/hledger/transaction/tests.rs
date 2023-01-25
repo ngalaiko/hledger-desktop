@@ -632,3 +632,45 @@ fn test_transaction_validate_not_zero_sum_postings() {
 
     assert!(transaction.validate().is_err());
 }
+
+#[test]
+fn test_transaction_validate_negative_price() {
+    let transaction = Transaction {
+        primary_date: NaiveDate::from_ymd_opt(2008, 1, 1).unwrap(),
+        secondary_date: None,
+        status: Status::Unmarked,
+        code: None,
+        description: Description {
+            note: Some("income".into()),
+            payee: None,
+        },
+        postings: vec![
+            Posting {
+                account: "assets:bank:checking".into(),
+                amount: Some(Amount {
+                    currency: "$".into(),
+                    value: dec!(1),
+                }),
+                status: Status::Unmarked,
+                unit_price: None,
+                total_price: None,
+            },
+            Posting {
+                account: "income:salary".into(),
+                amount: Some(Amount {
+                    currency: "SEK".into(),
+                    value: dec!(-10.0),
+                }),
+                status: Status::Unmarked,
+                unit_price: None,
+                total_price: Some(Amount {
+                    currency: "USD".into(),
+                    value: dec!(1.0),
+                }),
+            },
+        ],
+        tags: vec![],
+    };
+
+    assert!(transaction.validate().is_ok());
+}

@@ -1,29 +1,25 @@
 <script lang="ts">
     import { open, type OpenDialogOptions } from "@tauri-apps/api/dialog";
+    import { createEventDispatcher } from "svelte";
 
-    export let placeholder: string = "select file...";
-    export let value: string | undefined = undefined;
+    const dispatch = createEventDispatcher<{ select: { filepath: string } }>();
+
     export let filters: OpenDialogOptions["filters"] = [];
 
-    const selectFile = () =>
+    const onButtonClick = () =>
         open({
             filters,
         }).then((selected) => {
             if (!Array.isArray(selected) && selected !== null) {
-                value = selected;
+                dispatch("select", { filepath: selected });
             }
         });
 </script>
 
-<form
-    on:submit={selectFile}
-    class="flex flex-row gap-2 border justify-between p-2"
+<button
+    type="button"
+    class="shadow-md py-1 px-2 rounded-md transition hover:scale-105"
+    on:click={onButtonClick}
 >
-    <input class="flex-1" type="text" bind:value {placeholder} disabled />
-    <button
-        type="submit"
-        class="shadow-md py-1 px-2 rounded-md transition hover:scale-105"
-    >
-        {value ? "select another" : "select"}
-    </button>
-</form>
+    <slot>select</slot>
+</button>

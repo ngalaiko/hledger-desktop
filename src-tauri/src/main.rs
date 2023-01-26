@@ -1,5 +1,3 @@
-mod hledger;
-use hledger::{HLParserError, Journal};
 use std::fs;
 use std::path::PathBuf;
 use tauri::InvokeError;
@@ -37,23 +35,11 @@ fn read_file(file_path: &str) -> Result<String, InvokeError> {
     }
 }
 
-#[tauri::command]
-fn parse_hledger_file(file_path: &str) -> Result<Journal, InvokeError> {
-    let journal_path = PathBuf::from(file_path);
-    let journal: Result<Journal, HLParserError> = journal_path.try_into();
-    if journal.is_ok() {
-        return Ok(journal.unwrap());
-    } else {
-        return Err(journal.err().unwrap().to_string().into());
-    }
-}
-
 fn main() {
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
             get_ledger_file,
             read_file,
-            parse_hledger_file,
             resolve_glob_pattern,
         ])
         .run(tauri::generate_context!())

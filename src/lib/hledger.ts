@@ -1,28 +1,65 @@
 import { hledger } from "./tauri";
+import type { Account, Amount, Commodity, Posting, Transaction } from "./types";
+import csv from "csvtojson";
 
-export type Account = string;
+export const accounts = ({
+  filepath,
+}: {
+  filepath: string;
+}): Promise<Account[]> =>
+  hledger("accounts", "--file", filepath).then((out) => out.split("\n"));
 
-const SEPARATOR = ":";
+export const commodities = ({
+  filepath,
+}: {
+  filepath: string;
+}): Promise<Commodity[]> =>
+  hledger("commodities", "--file", filepath).then((out) => out.split("\n"));
 
-export namespace Account {
-    export const join = (...parts: string[]): Account => parts.join(SEPARATOR);
+const parseAmountString = (raw: string): Amount => {
+  if (raw === "0") return { value: 0 };
+  const [valueString, ...rest] = raw.split(" ");
+  return {
+    value: parseFloat(valueString),
+    commodity: rest.join(" "),
+  };
+};
 
-    export const split = (account: Account): string[] => account.split(SEPARATOR);
+const parsePostingJSON = (v: any): Posting => ({
+  txnidx: parseInt(v["txnidx"]),
+  date: new Date(v["date"]),
+  description: v["description"] as string,
+  account: v["account"] as Account,
+  amount: parseAmountString(v["amount"]),
+  total: (v["total"] as string).split(",").map((amt) => parseAmountString(amt)),
+});
 
-    export const basename = (account: Account): string => {
-        const lastSeparator = account.lastIndexOf(SEPARATOR);
-        if (lastSeparator === -1) return account;
-        return account.slice(lastSeparator + 1);
-    };
-
-    export const parent = (account: Account): Account | undefined => {
-        const lastSeparator = account.lastIndexOf(SEPARATOR);
-        if (lastSeparator === -1) return account;
-        return account.slice(0, lastSeparator);
-    };
-}
-
-export const accounts = (filename: string): Promise<Account[]> =>
-    hledger("-f", filename, "accounts").then((out) => out.split("\n"));
-
-export const exec = (...args: string[]) => hledger(...args);
+export const transactions = async ({
+  filepath,
+}: {
+  filepath: string;
+}): Promise<Transaction[]> => {
+  const output = await hledger(
+    "register",
+    "--output-format",
+    "csv",
+    "--file",
+    filepath,
+    "--historical"
+  );
+  const rows = await csv().fromString(output);
+  return rows.reduce((acc: Transaction[], row: any) => {
+    const posting = parsePostingJSON(row);
+    if (acc.length === 0 || acc.at(-1)?.idx !== posting.txnidx) {
+      acc.push({
+        idx: posting.txnidx,
+        date: posting.date,
+        description: posting.description,
+        postings: [posting],
+      });
+    } else {
+      acc.at(-1)?.postings.push(posting);
+    }
+    return acc;
+  }, [] as Transaction[]);
+};

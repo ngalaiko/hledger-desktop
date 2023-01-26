@@ -1,11 +1,9 @@
 <script lang="ts">
     import { Account } from "$lib";
-    export let parent: Account | undefined = undefined;
     export let accounts: Account[];
 
     const byRootAccount = accounts.reduce((acc, account) => {
         const [root, ...rest] = Account.split(account);
-        console.log({ root, rest });
         if (root === undefined) {
             throw new Error(`invlid account: '${account}'`);
         }
@@ -26,7 +24,7 @@
                 <details class="cursor-pointer">
                     <summary>{root}</summary>
                     <div class="ml-4">
-                        <svelte:self parent={root} {accounts} />
+                        <svelte:self {accounts} />
                     </div>
                 </details>
             {:else}

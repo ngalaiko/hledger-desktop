@@ -1,10 +1,11 @@
 <script lang="ts">
     import "../app.postcss";
 
-    import { tauri, context } from "$lib";
+    import { tauri, hledger, context } from "$lib";
     import { onMount } from "svelte";
     import { derived, writable } from "svelte/store";
     import { FileSelector } from "$lib/components";
+    import { page } from "$app/stores";
 
     const selectedFile = writable<string | undefined>(undefined);
     const defaultFile = writable<string | undefined>(undefined);

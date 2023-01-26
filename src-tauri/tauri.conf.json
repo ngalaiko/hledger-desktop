@@ -14,7 +14,7 @@
     "bundle": {
       "active": true,
       "category": "DeveloperTool",
-      "externalBin": ["binaries/hledger"],
+      "externalBin": ["binaries/hledger-web"],
       "copyright": "",
       "deb": {
         "depends": []
@@ -50,7 +50,7 @@
         "sidecar": true,
         "scope": [
           {
-            "name": "binaries/hledger",
+            "name": "binaries/hledger-web",
             "sidecar": true,
             "args": true
           }

@@ -70,16 +70,6 @@ function download() {
 }
 
 case "$OS" in
-Linux)
-	TMP_DIR=$(mktemp -d -t ci-XXXXXXXXXX)
-	pushd "$TMP_DIR"
-	download "https://github.com/simonmichael/hledger/releases/download/$VERSION/hledger-linux-x64.zip"
-	unzip -o "hledger-linux-x64.zip"
-	mkdir -p "$DIST"
-	tar xvf "hledger-linux-x64.tar" --directory "$DIST"
-	popd
-	rm -rf $TMP_DIR
-	;;
 Darwin)
 	TMP_DIR=$(mktemp -d -t ci-XXXXXXXXXX)
 	pushd "$TMP_DIR"
@@ -87,7 +77,7 @@ Darwin)
 	unzip -o "hledger-mac-x64.zip"
 	mkdir -p "$DIST"
 	tar xvf "hledger-mac-x64.tar"
-	mv "hledger" "$DIST/hledger-aarch64-apple-darwin"
+	mv "hledger-web" "$DIST/hledger-web-aarch64-apple-darwin"
 	popd
 	rm -rf $TMP_DIR
 	;;

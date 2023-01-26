@@ -12,10 +12,22 @@ class ExecError extends Error {
     }
 }
 
+// spawns hledger-web server and returns a function to kill it.
+export const hledgerWeb = async (...args: string[]) => {
+    const process = await Command.sidecar("binaries/hledger-web", args).spawn();
+    console.debug(`exec "hledger-web ${args.join(" ")}"`, { pid: process.pid });
+    return async () => {
+        await process.kill();
+        console.debug(`killed "hledger-web ${args.join(" ")}"`, {
+            pid: process.pid,
+        });
+    };
+};
+
 export const hledger = async (...args: string[]) => {
     const start = new Date();
     const { code, stdout, stderr } = await Command.sidecar(
-        "binaries/hledger",
+        "binaries/hledger-web",
         args
     ).execute();
 

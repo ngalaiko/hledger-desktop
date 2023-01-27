@@ -1,44 +1,34 @@
-export type Account = string;
+export type Quantity = {
+    decimalMantissa: number;
+    decimalPlaces: number;
+    floatingPoint: number;
+};
 
-export namespace Account {
-  const SEPARATOR = ":";
+export type AmountStyle = {
+    ascommodityside: "R" | "L";
+    ascommodityspaced: boolean;
+    asdecimalpoint: string;
+    asdigitgroup: [string, [number]];
+    asprecision: number;
+};
 
-  export const join = (...parts: string[]): Account => parts.join(SEPARATOR);
-
-  export const split = (account: Account): string[] => account.split(SEPARATOR);
-
-  export const basename = (account: Account): string => {
-    const lastSeparator = account.lastIndexOf(SEPARATOR);
-    if (lastSeparator === -1) return account;
-    return account.slice(lastSeparator + 1);
-  };
-
-  export const parent = (account: Account): Account | undefined => {
-    const lastSeparator = account.lastIndexOf(SEPARATOR);
-    if (lastSeparator === -1) return account;
-    return account.slice(0, lastSeparator);
-  };
-}
-
-export type Commodity = string;
+export type Price = {
+    contents: Amount;
+    tag: "TotalPrice";
+};
 
 export type Amount = {
-  value: number;
-  commodity?: Commodity;
+    acommodity: string;
+    aprice: Price | null;
+    aquantity: Quantity;
+    astyle: AmountStyle;
 };
 
-export type Posting = {
-  txnidx: number;
-  date: Date;
-  description: string;
-  account: Account;
-  amount: Amount;
-  total: Amount[];
-};
-
-export type Transaction = {
-  idx: number;
-  date: Date;
-  description: string;
-  postings: Posting[];
+export type Account = {
+    aname: string;
+    aebalance: Amount[];
+    aibalance: Amount[];
+    anumpostings: number;
+    aparent_: string;
+    asubs_: string[];
 };

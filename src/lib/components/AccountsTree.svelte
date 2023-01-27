@@ -1,36 +1,21 @@
 <script lang="ts">
-    import { Account } from "$lib";
+    import type { Account } from "$lib";
+    export let root = "";
     export let accounts: Account[];
-
-    const byRootAccount = accounts.reduce((acc, account) => {
-        const [root, ...rest] = Account.split(account);
-        if (root === undefined) {
-            throw new Error(`invlid account: '${account}'`);
-        }
-        if (acc[root] === undefined) {
-            acc[root] = [];
-        }
-        if (rest.length > 0) {
-            acc[root].push(Account.join(...rest));
-        }
-        return acc;
-    }, {} as Record<Account, Account[]>);
 </script>
 
 <ul>
-    {#each Object.entries(byRootAccount) as [root, accounts]}
+    {#each accounts.filter(({ aparent_ }) => aparent_ === root) as account}
         <li>
-            {#if accounts.length > 0}
+            {#if account.asubs_.length > 0}
                 <details class="cursor-pointer">
-                    <summary>{root}</summary>
+                    <summary> {account.aname} </summary>
                     <div class="ml-4">
-                        <svelte:self {accounts} />
+                        <svelte:self root={account.aname} {accounts} />
                     </div>
                 </details>
             {:else}
-                <span>
-                    {root}
-                </span>
+                <span> {account.aname} </span>
             {/if}
         </li>
     {/each}

@@ -36,7 +36,9 @@
     const onAccountSelected = (account: string) =>
         transactionFilters.set([
             (tx: Transaction) =>
-                tx.tpostings.some((posting) => posting.paccount === account),
+                tx.tpostings.some((posting) =>
+                    posting.paccount.startsWith(account)
+                ),
         ]);
 </script>
 

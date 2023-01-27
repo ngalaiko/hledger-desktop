@@ -1,8 +1,10 @@
 <script lang="ts">
     import type { Account } from "$lib";
     import { createEventDispatcher } from "svelte";
-    export let root = "";
+    export let root = "root";
     export let accounts: Account[];
+
+    accounts = accounts.filter((acc) => acc.aname !== "root");
 
     const dispatch = createEventDispatcher<{ select: { account: string } }>();
 </script>

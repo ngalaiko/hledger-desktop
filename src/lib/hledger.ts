@@ -19,6 +19,7 @@ const instance = ({ filepath }: { filepath: string }) => ({
 
 const instances: Record<string, ReturnType<typeof instance>> = {};
 const getInstance = (filepath: string) => {
+    // TODO: store a reference somewhere else to survive window reloads
     if (filepath in instances) {
         return instances[filepath];
     }
@@ -41,9 +42,11 @@ export const transactions = async ({
     filepath,
 }: {
     filepath: string;
-}): Promise<Transaction[]> =>
-    getInstance(filepath).isReady.then(() =>
-        fetch(new URL("/transactions", baseURL).toString(), {
-            method: "GET",
-        }).then((resp) => resp.json())
-    );
+}): Promise<Transaction[]> => {
+    await getInstance(filepath).isReady;
+    const response = await fetch(new URL("/transactions", baseURL).toString(), {
+        method: "GET",
+    });
+    const transactions = await response.json();
+    return transactions;
+};

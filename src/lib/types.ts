@@ -33,4 +33,32 @@ export type Account = {
     asubs_: string[];
 };
 
-export type Transaction = {};
+export type Posting = {
+    paccount: string;
+    pamount: [Amount];
+    pbalanceassertion: string;
+    pcomment: string;
+    pstatus: "Unmarked";
+    ptags: string[];
+    ptransaction_: number;
+    ptype: "RegularPosting";
+};
+
+export type SourcePos = {
+    sourceLine: number;
+    sourceColumn: number;
+    sourceName: string;
+};
+
+export type Transaction = {
+    tindex: number;
+    tdate: string;
+    tdate2: string;
+    tdescription: string;
+    tpostings: Posting[];
+    tprecedingcomment: string;
+    tcomment: string;
+    tsourcepos: [SourcePos, SourcePos];
+    tstatus: "Unmarked";
+    ttags: string[];
+};

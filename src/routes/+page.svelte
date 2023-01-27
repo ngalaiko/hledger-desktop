@@ -1,6 +1,7 @@
 <script lang="ts">
     import { hledger, context } from "$lib";
-    import { AccountsTree } from "$lib/components";
+    import { AccountsTree, Amount } from "$lib/components";
+    import VirtualList from "@sveltejs/svelte-virtual-list";
 
     const filePath = context.getFilePath();
 </script>
@@ -15,39 +16,24 @@
     {#await hledger.transactions({ filepath: $filePath })}
         loading...
     {:then transctions}
-        {JSON.stringify(transctions)}
-        <!--     <ul class="flex flex-col gap-4"> -->
-        <!--         {#each transctions as transaction} -->
-        <!--             <li> -->
-        <!--                 <figure class="flex flex-col"> -->
-        <!--                     <figcaption class="flex gap-2 whitespace-nowrap"> -->
-        <!--                         <time datetime={transaction.date.toISOString()}> -->
-        <!--                             {transaction.date.toLocaleDateString()} -->
-        <!--                         </time> -->
-        <!--                         <span>{transaction.description}</span> -->
-        <!--                     </figcaption> -->
-        <!--                 </figure> -->
-        <!--                 <ul class="ml-4"> -->
-        <!--                     {#each transaction.postings as posting} -->
-        <!--                         <li class="grid grid-cols-2"> -->
-        <!--                             <span class="whitespace-nowrap" -->
-        <!--                                 >{posting.account}</span -->
-        <!--                             > -->
-        <!--                             <span -->
-        <!--                                 class="flex gap-2" -->
-        <!--                                 class:text-green-600={posting.amount.value > -->
-        <!--                                     0} -->
-        <!--                                 class:text-red-600={posting.amount.value < -->
-        <!--                                     0} -->
-        <!--                             > -->
-        <!--                                 <span>{posting.amount.value}</span> -->
-        <!--                                 <span>{posting.amount.commodity}</span> -->
-        <!--                             </span> -->
-        <!--                         </li> -->
-        <!--                     {/each} -->
-        <!--                 </ul> -->
-        <!--             </li> -->
-        <!--         {/each} -->
-        <!--     </ul> -->
+        <VirtualList height="500px" items={transctions} let:item={transaction}>
+            <figure class="flex flex-col">
+                <figcaption class="flex gap-2 whitespace-nowrap">
+                    <time datetime={new Date(transaction.tdate).toISOString()}>
+                        {transaction.tdate}
+                    </time>
+                    <span>{transaction.tdescription}</span>
+                </figcaption>
+            </figure>
+            <ul class="ml-4">
+                {#each transaction.tpostings as posting}
+                    <li class="grid grid-cols-2">
+                        <span class="whitespace-nowrap">{posting.paccount}</span
+                        >
+                        <Amount amount={posting.pamount[0]} />
+                    </li>
+                {/each}
+            </ul>
+        </VirtualList>
     {/await}
 {/if}

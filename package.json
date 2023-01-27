@@ -12,6 +12,7 @@
     "tauri": "tauri"
   },
   "dependencies": {
+    "@sveltejs/svelte-virtual-list": "^3.0.1",
     "@tauri-apps/api": "^1.2.0",
     "date-fns": "^2.29.3"
   },
@@ -19,7 +20,6 @@
     "@sveltejs/adapter-static": "^1.0.0",
     "@sveltejs/kit": "^1.0.0",
     "@tauri-apps/cli": "^1.2.2",
-    "@types/date-fns": "^2.6.0",
     "autoprefixer": "^10.4.7",
     "postcss": "^8.4.14",
     "postcss-load-config": "^4.0.1",

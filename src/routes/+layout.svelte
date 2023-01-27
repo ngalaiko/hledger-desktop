@@ -1,11 +1,10 @@
 <script lang="ts">
     import "../app.postcss";
 
-    import { tauri, hledger, context } from "$lib";
+    import { tauri, context } from "$lib";
     import { onMount } from "svelte";
     import { derived, writable } from "svelte/store";
     import { FileSelector } from "$lib/components";
-    import { page } from "$app/stores";
 
     const selectedFile = writable<string | undefined>(undefined);
     const defaultFile = writable<string | undefined>(undefined);
@@ -18,8 +17,8 @@
     onMount(async () => defaultFile.set(await tauri.getFilePath()));
 </script>
 
-<main>
-    <header class="flex justify-between">
+<main class="flex flex-col h-full">
+    <header class="flex-1 flex justify-between">
         <input disabled class="flex-1" value={$displayFile} />
 
         <FileSelector

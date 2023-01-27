@@ -1,7 +1,10 @@
 <script lang="ts">
     import type { Account } from "$lib";
+    import { createEventDispatcher } from "svelte";
     export let root = "";
     export let accounts: Account[];
+
+    const dispatch = createEventDispatcher<{ select: { account: string } }>();
 </script>
 
 <ul>
@@ -9,13 +12,32 @@
         <li>
             {#if account.asubs_.length > 0}
                 <details class="cursor-pointer">
-                    <summary> {account.aname} </summary>
+                    <summary>
+                        <button
+                            type="button"
+                            on:click={() =>
+                                dispatch("select", { account: account.aname })}
+                        >
+                            {account.aname.split(":").at(-1)}
+                        </button>
+                    </summary>
                     <div class="ml-4">
-                        <svelte:self root={account.aname} {accounts} />
+                        <svelte:self
+                            root={account.aname}
+                            {accounts}
+                            on:select={({ detail }) =>
+                                dispatch("select", detail)}
+                        />
                     </div>
                 </details>
             {:else}
-                <span> {account.aname} </span>
+                <button
+                    type="button"
+                    on:click={() =>
+                        dispatch("select", { account: account.aname })}
+                >
+                    {account.aname.split(":").at(-1)}
+                </button>
             {/if}
         </li>
     {/each}

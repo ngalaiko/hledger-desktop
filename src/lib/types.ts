@@ -32,3 +32,5 @@ export type Account = {
     aparent_: string;
     asubs_: string[];
 };
+
+export type Transaction = {};

@@ -17,7 +17,7 @@
     onMount(async () => defaultFile.set(await tauri.getFilePath()));
 </script>
 
-<main class="flex flex-col h-full">
+<main class="h-full">
     <header class="flex-1 flex justify-between">
         <input disabled class="flex-1" value={$displayFile} />
 

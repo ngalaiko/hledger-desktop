@@ -9,11 +9,20 @@
 
     let input: HTMLInputElement;
 
-    export let sources: (value?: string) => string[] = () => [];
+    export let sources: ((value?: string) => string[]) | string[] = () => [];
 
-    $: suggestion = mostCommon(
-        sources(value).filter((source) => source.startsWith(value))
-    )?.slice(value.length);
+    $: suggestion =
+        typeof sources === "function"
+            ? mostCommon(
+                  sources(value).filter((source) =>
+                      source.toLowerCase().startsWith(value.toLowerCase())
+                  )
+              )?.slice(value.length)
+            : mostCommon(
+                  sources.filter((source) =>
+                      source.toLowerCase().startsWith(value.toLowerCase())
+                  )
+              )?.slice(value.length);
 
     const keydown = (
         node: HTMLElement,

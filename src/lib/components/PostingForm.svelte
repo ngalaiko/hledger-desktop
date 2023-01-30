@@ -7,36 +7,40 @@
     export let transactions: Readable<Transaction[]>;
 
     const mostCommonExpenseAccount = derived(transactions, (transactions) => {
-        if (transactions.length === 0) return undefined;
         const accounts = transactions.flatMap((tx) =>
             tx.tpostings
                 .filter((p) => p.pamount[0].aquantity.floatingPoint > 0)
                 .map((p) => p.paccount)
         );
+        if (accounts.length === 0) return undefined;
         return mostCommon(accounts);
     });
 
-    const mostCommonAmount = derived(
+    let inputAccount: string = "";
+
+    $: amountToSuggest = derived(
         [transactions, mostCommonExpenseAccount],
         ([transactions, account]) => {
-            if (transactions.length === 0) return undefined;
-            const commodities = transactions.flatMap((tx) =>
+            const amounts = transactions.flatMap((tx) =>
                 tx.tpostings
-                    .filter((p) => p.paccount === account)
+                    .filter((p) => {
+                        const prefix =
+                            inputAccount.length > 0 ? inputAccount : account;
+                        return prefix
+                            ? p.paccount
+                                  .toLowerCase()
+                                  .startsWith(prefix.toLowerCase())
+                            : false;
+                    })
                     .map((p) => p.pamount[0])
             );
-            return mostCommon(commodities);
+            if (amounts.length === 0) return undefined;
+            return mostCommon(amounts);
         }
     );
 
-    const suggestPostingAccount = () => $accounts;
-    const suggestPostingAmount = () =>
-        $mostCommonAmount ? [`${Amount.format($mostCommonAmount)}`] : [];
-
     const accounts = derived(transactions, (transactions) =>
-        transactions.flatMap((tx) =>
-            tx.tpostings.slice(0, 1).map((p) => p.paccount)
-        )
+        transactions.flatMap((tx) => tx.tpostings.map((p) => p.paccount))
     );
 
     const onSubmit = (e: SubmitEvent) => {
@@ -52,8 +56,14 @@
     <AutocompleteTextInput
         class="flex-1"
         name="posting[]"
-        sources={suggestPostingAccount}
+        sources={$accounts}
+        bind:value={inputAccount}
     />
-    <AutocompleteTextInput name="amount[]" sources={suggestPostingAmount} />
+    <AutocompleteTextInput
+        name="amount[]"
+        sources={$amountToSuggest
+            ? [Amount.format($amountToSuggest)]
+            : ["$100"]}
+    />
     <input type="submit" value="" />
 </form>

@@ -49,16 +49,15 @@
                         </time>
                         <span>{transaction.tdescription}</span>
                     </figcaption>
-                    <ul class="ml-4">
+                    <ul class="flex-flex-col ml-4">
                         {#each transaction.tpostings as posting}
-                            <li
-                                class="flex justify-between text-ellipsis overflow-hidden"
-                            >
+                            <li class="flex justify-between">
                                 <span
                                     title={posting.paccount}
-                                    class=" text-ellipsis overflow-hidden"
-                                    >{posting.paccount}</span
+                                    class="text-ellipsis overflow-hidden"
                                 >
+                                    {posting.paccount}
+                                </span>
                                 <Amount
                                     amount={posting.pamount[0]}
                                     width={amountWidth(transaction.tpostings)}

@@ -14,7 +14,7 @@ export type AmountStyle = {
 
 export type Price = {
     contents: Amount;
-    tag: "TotalPrice";
+    tag: "TotalPrice" | "UnitPrice";
 };
 
 export type Amount = {
@@ -79,7 +79,13 @@ export namespace Amount {
                 ? `${value}${space}${commodity}`
                 : `${commodity}${space}${value}`;
 
-        return result;
+        if (amount.aprice?.tag === "UnitPrice") {
+            return result + " @ " + format(amount.aprice.contents);
+        } else if (amount.aprice?.tag === "TotalPrice") {
+            return result + " @@ " + format(amount.aprice.contents);
+        } else {
+            return result;
+        }
     };
 }
 

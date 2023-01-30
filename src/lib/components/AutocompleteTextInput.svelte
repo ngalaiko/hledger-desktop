@@ -47,7 +47,7 @@
     };
 </script>
 
-<div class="flex relative {className}">
+<div class="relative {className}">
     <input
         use:keydown={{ Tab: complete }}
         type="text"

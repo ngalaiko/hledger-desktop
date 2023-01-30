@@ -42,19 +42,19 @@
         </li>
         {#each $displayTransactions.slice(0, 100) as transaction}
             <li class="flex flex-1">
-                <figure class="flex flex-col flex-1">
+                <figure class="flex flex-col flex-1 max-w-full">
                     <figcaption class="flex gap-2 whitespace-nowrap">
                         <time class="font-mono" datetime={transaction.tdate}>
                             {transaction.tdate}
                         </time>
                         <span>{transaction.tdescription}</span>
                     </figcaption>
-                    <ul class="flex-flex-col ml-4">
+                    <ul class="flex flex-col ml-4">
                         {#each transaction.tpostings as posting}
-                            <li class="flex justify-between">
+                            <li class="flex gap-[2ch] justify-between">
                                 <span
                                     title={posting.paccount}
-                                    class="text-ellipsis overflow-hidden"
+                                    class="text-ellipsis overflow-hidden whitespace-pre"
                                 >
                                     {posting.paccount}
                                 </span>

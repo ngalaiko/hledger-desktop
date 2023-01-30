@@ -2,13 +2,12 @@
     import type { Transaction } from "$lib/types";
     import type { Readable } from "svelte/store";
     import { format } from "date-fns";
-    import AutocompleteTextInput from "./AutocompleteTextInput.svelte";
     import PostingForm from "./PostingForm.svelte";
 
     export let transactions: Readable<Transaction[]>;
 </script>
 
-<form class="flex flex-1 flex-col">
+<form class="flex flex-1 flex-col max-w-full">
     <fieldgroup class="flex gap-2 whitespace-nowrap">
         <input
             name="date"

@@ -49,12 +49,9 @@
     };
 </script>
 
-<form
-    on:submit={onSubmit}
-    class="flex justify-between text-ellipsis overflow-hidden"
->
+<form on:submit={onSubmit} class="flex justify-between max-w-full">
     <AutocompleteTextInput
-        class="flex-1"
+        class="flex-1 text-ellipsis overflow-hidden whitespace-nowrap"
         name="posting[]"
         sources={$accounts}
         bind:value={inputAccount}

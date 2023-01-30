@@ -9,6 +9,6 @@
     );
 </script>
 
-<div class="flex flex-row font-mono whitespace-pre">
+<div class="whitespace-pre">
     {prefix}{Amount.format(amount)}
 </div>

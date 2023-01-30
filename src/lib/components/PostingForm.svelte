@@ -1,36 +1,28 @@
 <script lang="ts">
-    import { Amount, type Transaction } from "$lib/types";
+    import { Amount, type Posting } from "$lib/types";
     import { derived, type Readable } from "svelte/store";
     import AutocompleteTextInput from "./AutocompleteTextInput.svelte";
     import { mostCommon } from "$lib";
 
-    export let transactions: Readable<Transaction[]>;
+    export let postings: Readable<Posting[]>;
 
     let inputAccount: string = "";
 
-    const accounts = derived(transactions, (transactions) =>
-        transactions.flatMap((tx) => tx.tpostings.map((p) => p.paccount))
+    const accounts = derived(postings, (postings) =>
+        postings.map((p) => p.paccount)
     );
 
-    $: amounts = derived(
-        [transactions, accounts],
-        ([transactions, accounts]) => {
-            const account = mostCommon(accounts);
-            return transactions.flatMap((tx) =>
-                tx.tpostings
-                    .filter((p) => {
-                        const prefix =
-                            inputAccount.length > 0 ? inputAccount : account;
-                        return prefix
-                            ? p.paccount
-                                  .toLowerCase()
-                                  .startsWith(prefix.toLowerCase())
-                            : false;
-                    })
-                    .map((p) => Amount.format(p.pamount[0]))
-            );
-        }
-    );
+    $: amounts = derived([postings, accounts], ([postings, accounts]) => {
+        const account = mostCommon(accounts);
+        return postings
+            .filter((p) => {
+                const prefix = inputAccount.length > 0 ? inputAccount : account;
+                return prefix
+                    ? p.paccount.toLowerCase().startsWith(prefix.toLowerCase())
+                    : false;
+            })
+            .map((p) => Amount.format(p.pamount[0]));
+    });
 
     const onSubmit = (e: SubmitEvent) => {
         e.preventDefault();

@@ -10,6 +10,10 @@
     export const descriptions = derived(transactions, (transactions) =>
         transactions.map((t) => t.tdescription)
     );
+
+    const postings = derived(transactions, (transactions) =>
+        transactions.flatMap((tx) => tx.tpostings.slice(0, 1))
+    );
 </script>
 
 <form class="flex flex-1 flex-col max-w-full">
@@ -24,14 +28,13 @@
             name="description"
             sources={$descriptions}
             placeholder="transaction"
-            class="flex-q"
             required
         />
     </fieldgroup>
 
     <ul class="ml-4">
         <li>
-            <PostingForm {transactions} />
+            <PostingForm {postings} />
         </li>
     </ul>
 </form>

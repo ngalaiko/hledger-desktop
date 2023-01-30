@@ -1,8 +1,8 @@
 <script lang="ts">
-    import type { Transaction } from "$lib/types";
+    import { Amount, type Transaction } from "$lib/types";
     import { derived, type Readable } from "svelte/store";
     import AutocompleteTextInput from "./AutocompleteTextInput.svelte";
-    import { average, mostCommon } from "$lib";
+    import { mostCommon } from "$lib";
 
     export let transactions: Readable<Transaction[]>;
 
@@ -16,47 +16,22 @@
         return mostCommon(accounts);
     });
 
-    const mostCommonAssetsAccount = derived(transactions, (transactions) => {
-        if (transactions.length === 0) return undefined;
-        const accounts = transactions.flatMap((tx) =>
-            tx.tpostings
-                .filter((p) => p.pamount[0].aquantity.floatingPoint < 0)
-                .map((p) => p.paccount)
-        );
-        return mostCommon(accounts);
-    });
-
-    const mostCommonCommodity = derived(
+    const mostCommonAmount = derived(
         [transactions, mostCommonExpenseAccount],
         ([transactions, account]) => {
             if (transactions.length === 0) return undefined;
             const commodities = transactions.flatMap((tx) =>
                 tx.tpostings
                     .filter((p) => p.paccount === account)
-                    .map((p) => p.pamount[0].acommodity)
+                    .map((p) => p.pamount[0])
             );
             return mostCommon(commodities);
         }
     );
 
-    const averageAmount = derived(
-        [transactions, mostCommonExpenseAccount, mostCommonCommodity],
-        ([transactions, account, commodity]) => {
-            if (transactions.length === 0) return undefined;
-            const commodities = transactions.flatMap((tx) =>
-                tx.tpostings
-                    .filter((p) => p.paccount === account)
-                    .filter((p) => p.pamount[0].acommodity === commodity)
-                    .map((p) => p.pamount[0].aquantity.floatingPoint)
-            );
-            return average(commodities)?.toFixed(2);
-        }
-    );
-
     const suggestPostingAccount = () => $accounts;
-    const suggestPostingAmount = () => [
-        `${$averageAmount} ${$mostCommonCommodity}`,
-    ];
+    const suggestPostingAmount = () =>
+        $mostCommonAmount ? [`${Amount.format($mostCommonAmount)}`] : [];
 
     const accounts = derived(transactions, (transactions) =>
         transactions.flatMap((tx) =>

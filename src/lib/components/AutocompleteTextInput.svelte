@@ -4,13 +4,15 @@
     export let name: string = "";
     export let value: string = "";
     export let required: boolean = false;
+    let className = "";
+    export { className as class };
 
     let input: HTMLInputElement;
 
-    export let sources: string[] = [];
+    export let sources: (value?: string) => string[] = () => [];
 
     $: suggestion = mostCommon(
-        sources.filter((source) => source.startsWith(value))
+        sources(value).filter((source) => source.startsWith(value))
     )?.slice(value.length);
 
     const keydown = (
@@ -36,7 +38,7 @@
     };
 </script>
 
-<div class="flex flex-1 relative">
+<div class="flex relative {className}">
     <input
         use:keydown={{ Tab: complete }}
         type="text"
@@ -46,12 +48,13 @@
         class="flex-1 hover:outline-none focus:outline-none"
         {required}
         bind:this={input}
+        size={value ? value.length : suggestion?.length ?? 0}
     />
     {#if value && suggestion}
         <button
             type="button"
             on:click={() => input.focus()}
-            class="cursor-text flex-1 absolute top-0"
+            class="whitespace-pre cursor-text flex-1 absolute top-0"
             style:color="darkgrey"
             style:left="{value.length}ch"
         >

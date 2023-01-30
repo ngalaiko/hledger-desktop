@@ -8,3 +8,9 @@ export const mostCommon = <T extends string>(array: T[]) => {
         hashmap[a] > hashmap[b] ? a : b
     );
 };
+
+export const average = (array: number[]) => {
+    if (array.length === 0) return undefined;
+    const sum = array.reduce((a, b) => a + b);
+    return sum / array.length;
+};

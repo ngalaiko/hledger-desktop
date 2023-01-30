@@ -7,9 +7,9 @@ export type Quantity = {
 export type AmountStyle = {
     ascommodityside: "R" | "L";
     ascommodityspaced: boolean;
-    asdecimalpoint: string;
-    asdigitgroup: [string, [number]];
     asprecision: number;
+    asdecimalpoint: string | null;
+    asdigitgroups: [string, number[]] | null;
 };
 
 export type Price = {
@@ -21,8 +21,67 @@ export type Amount = {
     acommodity: string;
     aprice: Price | null;
     aquantity: Quantity;
+    aismultiplier: boolean;
     astyle: AmountStyle;
 };
+
+export namespace Amount {
+    const formatGroups = (
+        groups: [string, number[]] | null,
+        amount: string
+    ): string => {
+        if (groups === null) return amount;
+        const separator = groups[0];
+        const digitGroups = groups[1];
+
+        if (digitGroups.length === 0) return amount;
+        const lastGroup = digitGroups.at(-1)!;
+        if (lastGroup >= amount.length) return amount;
+
+        return (
+            formatGroups(
+                [
+                    separator,
+                    digitGroups.length === 1 ? digitGroups : digitGroups.slice(0, -1),
+                ],
+                amount.slice(0, -1 * lastGroup)
+            ) +
+            separator +
+            amount.slice(-1 * lastGroup)
+        );
+    };
+
+    const formatQuantity = (style: AmountStyle, quantity: Quantity): string => {
+        const isNegative = quantity.floatingPoint < 0;
+        const formatted = Math.abs(quantity.floatingPoint).toFixed(
+            style.asprecision
+        );
+        const [beforeSeparator, afterSeparator] = formatted.split(".");
+        return (
+            (isNegative ? "-" : "") +
+            formatGroups(style.asdigitgroups, beforeSeparator) +
+            (style.asdecimalpoint ?? ".") +
+            afterSeparator
+        );
+    };
+
+    export const format = (amount: Amount): string => {
+        const value = formatQuantity(amount.astyle, amount.aquantity);
+
+        const commodity = amount.acommodity.includes(" ")
+            ? `"${amount.acommodity}"`
+            : amount.acommodity;
+
+        const space = amount.astyle.ascommodityspaced ? " " : "";
+
+        const result =
+            amount.astyle.ascommodityside === "R"
+                ? `${value}${space}${commodity}`
+                : `${commodity}${space}${value}`;
+
+        return result;
+    };
+}
 
 export type Account = {
     aname: string;
@@ -36,12 +95,15 @@ export type Account = {
 export type Posting = {
     paccount: string;
     pamount: [Amount];
-    pbalanceassertion: string;
+    pbalanceassertion: string | null;
     pcomment: string;
-    pstatus: "Unmarked";
+    pdate: string | null;
+    pdate2: string | null;
+    poriginal: Posting | null;
+    pstatus: "Unmarked" | "Pending" | "Cleared";
     ptags: string[];
     ptransaction_: number;
-    ptype: "RegularPosting";
+    ptype: "RegularPosting" | "VirtualPosting" | "BalancedVirtualPosting";
 };
 
 export type SourcePos = {

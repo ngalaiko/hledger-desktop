@@ -1,6 +1,7 @@
 <script lang="ts">
     import { hledger, context, type Transaction, type Posting } from "$lib";
     import { Amount } from "$lib/components";
+    import { Amount as AmountType } from "$lib/types";
     import TransactionForm from "$lib/components/TransactionForm.svelte";
     import { derived, writable } from "svelte/store";
 
@@ -28,9 +29,7 @@
 
     const amountWidth = (postings: Posting[]) =>
         Math.max(
-            ...postings.map(
-                (p) => p.pamount[0].aquantity.floatingPoint.toString().length
-            )
+            ...postings.map((p) => AmountType.format(p.pamount[0]).length)
         );
 </script>
 

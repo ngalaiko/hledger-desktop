@@ -6,22 +6,17 @@
 
     export let transactions: Readable<Transaction[]>;
 
-    const mostCommonExpenseAccount = derived(transactions, (transactions) => {
-        const accounts = transactions.flatMap((tx) =>
-            tx.tpostings
-                .filter((p) => p.pamount[0].aquantity.floatingPoint > 0)
-                .map((p) => p.paccount)
-        );
-        if (accounts.length === 0) return undefined;
-        return mostCommon(accounts);
-    });
-
     let inputAccount: string = "";
 
-    $: amountToSuggest = derived(
-        [transactions, mostCommonExpenseAccount],
-        ([transactions, account]) => {
-            const amounts = transactions.flatMap((tx) =>
+    const accounts = derived(transactions, (transactions) =>
+        transactions.flatMap((tx) => tx.tpostings.map((p) => p.paccount))
+    );
+
+    $: amounts = derived(
+        [transactions, accounts],
+        ([transactions, accounts]) => {
+            const account = mostCommon(accounts);
+            return transactions.flatMap((tx) =>
                 tx.tpostings
                     .filter((p) => {
                         const prefix =
@@ -32,15 +27,9 @@
                                   .startsWith(prefix.toLowerCase())
                             : false;
                     })
-                    .map((p) => p.pamount[0])
+                    .map((p) => Amount.format(p.pamount[0]))
             );
-            if (amounts.length === 0) return undefined;
-            return mostCommon(amounts);
         }
-    );
-
-    const accounts = derived(transactions, (transactions) =>
-        transactions.flatMap((tx) => tx.tpostings.map((p) => p.paccount))
     );
 
     const onSubmit = (e: SubmitEvent) => {
@@ -59,7 +48,7 @@
     />
     <AutocompleteTextInput
         name="amount[]"
-        sources={$amountToSuggest ? [Amount.format($amountToSuggest)] : []}
+        sources={$amounts}
         placeholder="$100"
     />
     <input type="submit" value="" />

@@ -10,6 +10,7 @@
     let input: HTMLInputElement;
 
     export let sources: ((value?: string) => string[]) | string[] = () => [];
+    export let placeholder: string | undefined = undefined;
 
     $: suggestion =
         typeof sources === "function"
@@ -17,12 +18,12 @@
                   sources(value).filter((source) =>
                       source.toLowerCase().startsWith(value.toLowerCase())
                   )
-              )?.slice(value.length)
+              )?.slice(value.length) ?? placeholder
             : mostCommon(
                   sources.filter((source) =>
                       source.toLowerCase().startsWith(value.toLowerCase())
                   )
-              )?.slice(value.length);
+              )?.slice(value.length) ?? placeholder;
 
     const keydown = (
         node: HTMLElement,

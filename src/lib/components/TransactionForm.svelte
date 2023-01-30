@@ -1,26 +1,30 @@
 <script lang="ts">
     import type { Transaction } from "$lib/types";
-    import type { Readable } from "svelte/store";
+    import { derived, type Readable } from "svelte/store";
     import { format } from "date-fns";
     import PostingForm from "./PostingForm.svelte";
+    import AutocompleteTextInput from "./AutocompleteTextInput.svelte";
 
     export let transactions: Readable<Transaction[]>;
+
+    export const descriptions = derived(transactions, (transactions) =>
+        transactions.map((t) => t.tdescription)
+    );
 </script>
 
 <form class="flex flex-1 flex-col max-w-full">
     <fieldgroup class="flex gap-2 whitespace-nowrap">
-        <input
+        <AutocompleteTextInput
             name="date"
-            type="text"
-            placeholder={format(new Date(), "yyyy-MM-dd")}
-            class="w-[10ch] font-mono hover:outline-none focus:outline-none"
+            sources={[format(new Date(), "yyyy-MM-dd")]}
+            class="w-[10ch]"
             required
         />
-        <input
+        <AutocompleteTextInput
             name="description"
-            type="text"
-            placeholder="new transaction"
-            class="flex-1 hover:outline-none focus:outline-none"
+            sources={$descriptions}
+            placeholder="transaction"
+            class="flex-q"
             required
         />
     </fieldgroup>

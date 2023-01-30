@@ -54,13 +54,13 @@
         class="flex-1 text-ellipsis overflow-hidden whitespace-nowrap"
         name="posting[]"
         sources={$accounts}
+        placeholder="assets"
         bind:value={inputAccount}
     />
     <AutocompleteTextInput
         name="amount[]"
-        sources={$amountToSuggest
-            ? [Amount.format($amountToSuggest)]
-            : ["$100"]}
+        sources={$amountToSuggest ? [Amount.format($amountToSuggest)] : []}
+        placeholder="$100"
     />
     <input type="submit" value="" />
 </form>

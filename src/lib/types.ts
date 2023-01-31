@@ -67,11 +67,9 @@ export namespace Amount {
 
     export const format = (amount: Amount): string => {
         const value = formatQuantity(amount.astyle, amount.aquantity);
-
         const commodity = amount.acommodity.includes(" ")
             ? `"${amount.acommodity}"`
             : amount.acommodity;
-
         const space = amount.astyle.ascommodityspaced ? " " : "";
 
         const result =
@@ -79,12 +77,12 @@ export namespace Amount {
                 ? `${value}${space}${commodity}`
                 : `${commodity}${space}${value}`;
 
-        if (amount.aprice?.tag === "UnitPrice") {
-            return result + " @ " + format(amount.aprice.contents);
-        } else if (amount.aprice?.tag === "TotalPrice") {
-            return result + " @@ " + format(amount.aprice.contents);
-        } else {
+        if (amount.aprice === null) {
             return result;
+        } else if (amount.aprice.tag === "TotalPrice") {
+            return [result, "@@", format(amount.aprice.contents)].join(" ");
+        } else {
+            return [result, "@", format(amount.aprice.contents)].join(" ");
         }
     };
 }
@@ -98,10 +96,17 @@ export type Account = {
     asubs_: string[];
 };
 
+export type BalanceAssertion = {
+    baamount: Amount;
+    bainclusive: boolean;
+    baposition: SourcePos;
+    batotal: boolean;
+};
+
 export type Posting = {
     paccount: string;
     pamount: [Amount];
-    pbalanceassertion: string | null;
+    pbalanceassertion: BalanceAssertion | null;
     pcomment: string;
     pdate: string | null;
     pdate2: string | null;

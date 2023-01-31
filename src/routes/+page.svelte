@@ -1,7 +1,6 @@
 <script lang="ts">
-    import { hledger, context, type Transaction, type Posting } from "$lib";
-    import { Amount } from "$lib/components";
-    import { Amount as AmountType } from "$lib/types";
+    import { hledger, context, type Transaction } from "$lib";
+    import { Amount } from "$lib/types";
     import TransactionForm from "$lib/components/TransactionForm.svelte";
     import { derived, writable } from "svelte/store";
 
@@ -26,11 +25,6 @@
                 )
                 .sort((a, b) => b.tindex - a.tindex)
     );
-
-    const amountWidth = (postings: Posting[]) =>
-        Math.max(
-            ...postings.map((p) => AmountType.format(p.pamount[0]).length)
-        );
 </script>
 
 {#await $fetchTransactions}
@@ -41,6 +35,14 @@
             <TransactionForm transactions={displayTransactions} />
         </li>
         {#each $displayTransactions.slice(0, 100) as transaction}
+            {@const assertions = transaction.tpostings.map((p) =>
+                p.pbalanceassertion
+                    ? Amount.format(p.pbalanceassertion.baamount)
+                    : ""
+            )}
+            {@const maxAssetionLength = Math.max(
+                ...assertions.map((a) => a.length)
+            )}
             <li class="flex flex-1">
                 <figure class="flex flex-col flex-1 max-w-full">
                     <figcaption class="flex gap-2 whitespace-nowrap">
@@ -49,19 +51,35 @@
                         </time>
                         <span>{transaction.tdescription}</span>
                     </figcaption>
-                    <ul class="flex flex-col ml-4">
-                        {#each transaction.tpostings as posting}
-                            <li class="flex gap-[2ch] justify-between">
+                    <ul class="flex flex-col gap-2">
+                        {#each transaction.tpostings as posting, i}
+                            {@const amount =
+                                posting.pamount.length > 0
+                                    ? Amount.format(posting.pamount[0])
+                                    : null}
+                            {@const assertion = assertions[i]}
+                            <li class="flex gap-[2ch]">
                                 <span
                                     title={posting.paccount}
-                                    class="text-ellipsis overflow-hidden whitespace-pre"
+                                    class="flex-1 text-ellipsis overflow-hidden whitespace-pre"
                                 >
                                     {posting.paccount}
                                 </span>
-                                <Amount
-                                    amount={posting.pamount[0]}
-                                    width={amountWidth(transaction.tpostings)}
-                                />
+
+                                {#if amount}
+                                    <span class="whitespace-nowrap">
+                                        {amount}
+                                    </span>
+                                {/if}
+
+                                {#if maxAssetionLength > 0}
+                                    <span
+                                        style:width="{maxAssetionLength + 2}ch"
+                                        class="whitespace-nowrap"
+                                    >
+                                        {#if assertion}= {assertion}{/if}
+                                    </span>
+                                {/if}
                             </li>
                         {/each}
                     </ul>

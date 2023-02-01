@@ -27,14 +27,12 @@
     );
 
     const collapseAccount = (e: HTMLElement) => {
+        if (e.textContent === null) return;
+        e.dataset["value"] = e.textContent;
+
         const collapse = (e: HTMLElement) => {
             if (e.textContent === null) return;
-
-            if (e.dataset["value"] !== undefined) {
-                e.textContent = e.dataset["value"];
-            } else {
-                e.dataset["value"] = e.textContent;
-            }
+            if (e.dataset["value"]) e.textContent = e.dataset["value"];
 
             while (e.offsetWidth < e.scrollWidth) {
                 const parts: string[] = e.textContent.split(":");

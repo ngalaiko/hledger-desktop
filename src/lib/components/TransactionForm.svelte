@@ -32,7 +32,7 @@
         />
     </fieldgroup>
 
-    <ul class="ml-4">
+    <ul class="ml-[4ch]">
         <li>
             <PostingForm {postings} />
         </li>

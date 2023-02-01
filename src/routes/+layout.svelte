@@ -17,19 +17,23 @@
     onMount(async () => defaultFile.set(await tauri.getFilePath()));
 </script>
 
-<header data-tauri-drag-region class="h-6" />
+<div class="h-full flex flex-col">
+    <header data-tauri-drag-region class="h-8" />
 
-<main class="h-full font-mono">
-    <header class="flex-1 flex justify-between">
-        <input disabled class="flex-1" value={$displayFile} />
+    <main class="h-full font-mono overflow-y-scroll">
+        <header class="flex-1 flex justify-between">
+            <input disabled class="flex-1" value={$displayFile} />
 
-        <FileSelector
-            on:select={({ detail }) => selectedFile.set(detail.filepath)}
-            filters={[{ name: "hledger", extensions: ["ledger", "journal"] }]}
-        >
-            {$displayFile ? "select another" : "select"}
-        </FileSelector>
-    </header>
+            <FileSelector
+                on:select={({ detail }) => selectedFile.set(detail.filepath)}
+                filters={[
+                    { name: "hledger", extensions: ["ledger", "journal"] },
+                ]}
+            >
+                {$displayFile ? "select another" : "select"}
+            </FileSelector>
+        </header>
 
-    <slot />
-</main>
+        <slot />
+    </main>
+</div>

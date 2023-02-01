@@ -56,6 +56,10 @@
           }
         ]
       },
+      "window": {
+        "all": false,
+        "startDragging": true
+      },
       "dialog": {
         "all": false,
         "open": true
@@ -73,7 +77,9 @@
         "height": 600,
         "resizable": true,
         "title": "hledger-desktop",
-        "width": 800
+        "width": 800,
+        "hiddenTitle": true,
+        "titleBarStyle": "Overlay"
       }
     ]
   }

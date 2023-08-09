@@ -1,0 +1,15 @@
+{
+  "build": {
+    "devPath": "src",
+    "distDir": "src"
+  },
+  "tauri": {
+    "bundle": {
+      "active": true,
+      "targets": ["app", "dmg"],
+      "identifier": "rocks.galaiko.hledger.desktop",
+      "externalBin": ["binaries/hledger-web"],
+      "category": "Finance"
+    }
+  }
+}

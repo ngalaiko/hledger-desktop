@@ -803,6 +803,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "egui_autocomplete"
+version = "0.1.2"
+source = "git+https://github.com/ngalaiko/egui_autocomplete?branch=master#9577bc03930e87fe0fabe30f989207213cd6c279"
+dependencies = [
+ "egui",
+ "fuzzy-matcher",
+]
+
+[[package]]
 name = "egui_extras"
 version = "0.22.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1110,6 +1119,15 @@ dependencies = [
  "pin-project-lite",
  "pin-utils",
  "slab",
+]
+
+[[package]]
+name = "fuzzy-matcher"
+version = "0.3.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "54614a3312934d066701a80f20f15fa3b56d67ac7722b39eea5b4c9dd1d66c94"
+dependencies = [
+ "thread_local",
 ]
 
 [[package]]
@@ -1561,6 +1579,7 @@ version = "0.0.1"
 dependencies = [
  "chrono",
  "egui-modal",
+ "egui_autocomplete",
  "egui_extras",
  "futures",
  "lazy_static",

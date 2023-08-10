@@ -5,6 +5,7 @@
 use std::{collections::HashSet, path};
 
 use chrono::NaiveDate;
+use egui_autocomplete::AutoCompleteTextEdit;
 use egui_extras::DatePickerButton;
 use egui_modal::Modal as EguiModal;
 use poll_promise::Promise;
@@ -12,7 +13,9 @@ use tauri_egui::egui::{Align, Button, ComboBox, Layout, TextEdit, Ui, Widget};
 
 use crate::hledger::{self, Amount, Manager};
 
-struct Suggestion {
+struct Suggestions {
+    descriptions: Vec<String>,
+    account_names: Vec<String>,
     destinations: Vec<path::PathBuf>,
 }
 
@@ -20,7 +23,7 @@ pub struct NewTransactionModal {
     modal: Option<EguiModal>,
     manager: Manager,
 
-    suggestion: Promise<Result<Suggestion, hledger::Error>>,
+    suggestions: Promise<Result<Suggestions, hledger::Error>>,
     creating: Option<Promise<Result<(), hledger::Error>>>,
 
     input_date: NaiveDate,
@@ -33,21 +36,38 @@ impl NewTransactionModal {
     pub fn new(manager: &Manager, file_path: &path::Path) -> Self {
         Self {
             creating: None,
-            suggestion: Promise::spawn_async({
+            suggestions: Promise::spawn_async({
                 let manager = manager.to_owned();
                 let file_path = file_path.to_owned();
                 async move {
                     let client = manager.client(file_path).await?;
-                    let mut destinations = client
-                        .transactions()
-                        .await?
-                        .into_iter()
-                        .map(|a| a.source_position.0.file_name)
+                    let transactions = client.transactions().await?;
+                    let mut destinations = transactions
+                        .iter()
+                        .map(|a| a.source_position.0.file_name.clone())
                         .collect::<HashSet<_>>()
                         .into_iter()
                         .collect::<Vec<_>>();
                     destinations.sort();
-                    Ok(Suggestion { destinations })
+                    let mut descriptions = transactions
+                        .iter()
+                        .map(|a| a.description.clone())
+                        .collect::<HashSet<_>>()
+                        .into_iter()
+                        .collect::<Vec<_>>();
+                    descriptions.sort();
+                    let mut account_names = transactions
+                        .iter()
+                        .flat_map(|a| a.postings.iter().map(|p| p.account.to_string().clone()))
+                        .collect::<HashSet<_>>()
+                        .into_iter()
+                        .collect::<Vec<_>>();
+                    account_names.sort();
+                    Ok(Suggestions {
+                        destinations,
+                        descriptions,
+                        account_names,
+                    })
                 }
             }),
             manager: manager.to_owned(),
@@ -60,7 +80,7 @@ impl NewTransactionModal {
     }
 
     pub fn ui(&mut self, ui: &mut Ui) {
-        match self.suggestion.ready_mut() {
+        match self.suggestions.ready_mut() {
             None => {
                 ui.spinner();
             }
@@ -86,13 +106,18 @@ impl NewTransactionModal {
                     modal.frame(ui, |ui| {
                         ui.vertical(|ui| {
                             ui.horizontal(|ui| {
-                                DatePickerButton::new(&mut self.input_date)
-                                    .calendar_week(true)
-                                    .ui(ui);
+                                ui.add(
+                                    DatePickerButton::new(&mut self.input_date).calendar_week(true),
+                                );
 
-                                TextEdit::singleline(&mut self.input_description)
-                                    .hint_text("description")
-                                    .ui(ui);
+                                ui.add(
+                                    AutoCompleteTextEdit::new(
+                                        &mut self.input_description,
+                                        &suggestions.descriptions,
+                                        10,
+                                    )
+                                    .hint_text("description"),
+                                );
                             });
 
                             self.input_postings = self
@@ -101,10 +126,15 @@ impl NewTransactionModal {
                                 .enumerate()
                                 .filter_map(|(i, (account_name, amount))| {
                                     ui.horizontal(|ui| {
-                                        TextEdit::singleline(account_name)
-                                            .interactive(!is_loading)
+                                        ui.add(
+                                            AutoCompleteTextEdit::new(
+                                                account_name,
+                                                &suggestions.account_names,
+                                                10,
+                                            )
                                             .hint_text(format!("account {}", i + 1).as_str())
-                                            .ui(ui);
+                                            .interactive(!is_loading)
+                                        );
 
                                         let is_valid_amount = amount.parse::<Amount>().is_ok();
                                         TextEdit::singleline(amount)
@@ -116,6 +146,7 @@ impl NewTransactionModal {
                                                 ui.style().visuals.error_fg_color
                                             })
                                             .ui(ui);
+
 
                                         if !is_loading {
                                             if Button::new("❌").ui(ui).clicked() {

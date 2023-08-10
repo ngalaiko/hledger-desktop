@@ -7,9 +7,9 @@ pub enum Theme {
     Light,
 }
 
-impl Into<Visuals> for Theme {
-    fn into(self) -> Visuals {
-        match self {
+impl From<Theme> for Visuals {
+    fn from(val: Theme) -> Self {
+        match val {
             Theme::Light => Visuals::light(),
             Theme::Dark => Visuals::dark(),
         }

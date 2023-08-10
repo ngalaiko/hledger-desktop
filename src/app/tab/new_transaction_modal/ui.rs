@@ -1,7 +1,6 @@
 /// TODO:
 /// - validate if posting is balanced
 /// - transfer focus from the new input field into the created one
-
 use std::{collections::HashSet, path};
 
 use chrono::NaiveDate;
@@ -133,7 +132,7 @@ impl NewTransactionModal {
                                                 10,
                                             )
                                             .hint_text(format!("account {}", i + 1).as_str())
-                                            .interactive(!is_loading)
+                                            .interactive(!is_loading),
                                         );
 
                                         let is_valid_amount = amount.parse::<Amount>().is_ok();
@@ -146,7 +145,6 @@ impl NewTransactionModal {
                                                 ui.style().visuals.error_fg_color
                                             })
                                             .ui(ui);
-
 
                                         if !is_loading {
                                             if Button::new("❌").ui(ui).clicked() {

@@ -1,3 +1,7 @@
+/// TODO:
+/// - validate if posting is balanced
+/// - transfer focus from the new input field into the created one
+
 use std::{collections::HashSet, path};
 
 use chrono::NaiveDate;

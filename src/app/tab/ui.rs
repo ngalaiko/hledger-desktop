@@ -34,7 +34,7 @@ impl Tab {
             visible_transactions: None,
 
             accounts_tree: AccountsTree::new(manager, &file_path, &state.tree.clone()),
-            add_transaction_modal: NewTransactionModal::new(manager, &file_path),
+            add_transaction_modal: NewTransactionModal::new(manager),
             state,
         }
     }
@@ -44,7 +44,7 @@ impl Tab {
     }
 
     pub fn ui(&mut self, ui: &mut Ui) -> Response {
-        self.add_transaction_modal.ui(ui);
+        self.add_transaction_modal.ui(ui, self.visible_transactions.as_ref().unwrap_or(&vec![]));
 
         let accounts_response = SidePanel::left("accounts_tree")
             .show(ui.ctx(), |ui| {

@@ -134,7 +134,8 @@ impl tauri_egui::eframe::App for App {
         });
 
         if let Some(selected_tab_index) = self.state.selected_tab {
-            let (selected_tab_file_path, selected_tab_state) = &self.state.tabs[selected_tab_index];
+            let (selected_tab_file_path, selected_tab_state) =
+                &mut self.state.tabs[selected_tab_index];
             let selected_tab = self
                 .tabs
                 .entry(selected_tab_file_path.clone())

@@ -22,6 +22,7 @@ pub struct NewTransactionModal {
     modal: Option<EguiModal>,
     manager: Manager,
 
+
     suggestions: Promise<Result<Suggestions, hledger::Error>>,
     creating: Option<Promise<Result<(), hledger::Error>>>,
 

@@ -3,7 +3,7 @@ use std::{fmt, path, str::FromStr};
 use lazy_static::lazy_static;
 use regex::Regex;
 
-#[derive(Debug, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Tag(String, String);
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
@@ -16,7 +16,7 @@ pub struct AccountDeclarationInfo {
     pub declaration_order: usize,
 }
 
-#[derive(Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Quantity {
     #[serde(rename = "decimalMantissa")]
     pub decimal_mantissa: i64,
@@ -26,7 +26,7 @@ pub struct Quantity {
     pub floating_point: f64,
 }
 
-#[derive(Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum Side {
     #[serde(rename = "L")]
     Left,
@@ -51,7 +51,7 @@ impl Iterator for DigitGroupStyle {
     }
 }
 
-#[derive(Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct AmountStyle {
     #[serde(rename = "ascommodityside")]
     pub commodity_side: Side,
@@ -67,14 +67,14 @@ pub struct AmountStyle {
 
 pub type Commodity = String;
 
-#[derive(Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 #[serde(tag = "tag", content = "contents")]
 pub enum AmountPrice {
     TotalPrice(Amount),
     UnitPrice(Amount),
 }
 
-#[derive(Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Amount {
     #[serde(rename = "acommodity")]
     pub commodity: Commodity,
@@ -681,7 +681,7 @@ pub struct Account {
     pub balance_including_subsaccounts: MixedAmount,
 }
 
-#[derive(Debug, Default, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct SourcePosition {
     #[serde(rename = "sourceColumn")]
     pub column: usize,
@@ -693,7 +693,7 @@ pub struct SourcePosition {
 
 pub type SourceRange = (SourcePosition, SourcePosition);
 
-#[derive(Debug, Default, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, Copy, Default, serde::Serialize, serde::Deserialize)]
 pub enum Status {
     #[default]
     Unmarked,
@@ -701,7 +701,7 @@ pub enum Status {
     Cleared,
 }
 
-#[derive(Debug, Default, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct Transaction {
     #[serde(rename = "tindex")]
     pub index: usize,
@@ -727,7 +727,7 @@ pub struct Transaction {
     pub postings: Vec<Posting>,
 }
 
-#[derive(Debug, Default, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, Copy, Default, serde::Serialize, serde::Deserialize)]
 pub enum PostingType {
     #[serde(rename = "RegularPosting")]
     #[default]
@@ -738,7 +738,7 @@ pub enum PostingType {
     BalancedVirtual,
 }
 
-#[derive(Debug, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct BalanceAssertion {
     #[serde(rename = "baamount")]
     pub amount: Amount,
@@ -750,7 +750,7 @@ pub struct BalanceAssertion {
     pub position: SourcePosition,
 }
 
-#[derive(Debug, Default, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct Posting {
     #[serde(rename = "pdate")]
     pub date: Option<chrono::NaiveDate>,

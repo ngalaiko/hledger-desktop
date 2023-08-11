@@ -1,2 +1,2 @@
 mod ui;
-pub use ui::TransactionsList;
+pub use ui::ui;

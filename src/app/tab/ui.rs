@@ -6,7 +6,9 @@ use tauri_egui::egui::{Align, CentralPanel, Layout, Response, SidePanel, Ui};
 use crate::hledger::{self, Manager};
 
 use super::{
-    accounts_tree::AccountsTree, new_transaction_modal::NewTransactionModal, state::State,
+    accounts_tree::AccountsTree,
+    new_transaction_modal::{NewTransactionModal, Suggestions},
+    state::State,
     transactions_list,
 };
 
@@ -21,6 +23,7 @@ pub struct Tab {
 
     transactions: Promise<Result<Vec<hledger::Transaction>, hledger::Error>>,
     visible_transactions: Option<Vec<hledger::Transaction>>,
+    add_transaction_modal_suggestions: Option<Suggestions>,
 }
 
 impl Tab {
@@ -34,6 +37,7 @@ impl Tab {
                     client.transactions().await
                 }
             }),
+            add_transaction_modal_suggestions: None,
             visible_transactions: None,
             accounts_tree: AccountsTree::new(manager, &file_path, &state.tree.clone()),
             add_transaction_modal: NewTransactionModal::new(manager),
@@ -48,9 +52,15 @@ impl Tab {
     }
 
     pub fn ui(&mut self, ui: &mut Ui) -> Response {
-        let tx_created = self
-            .add_transaction_modal
-            .ui(ui, self.visible_transactions.as_ref().unwrap_or(&vec![]));
+        let tx_created = if let Some(tx) = self.visible_transactions.as_ref() {
+            let suggestions = self
+                .add_transaction_modal_suggestions
+                .get_or_insert_with(|| Suggestions::from(tx.as_ref()));
+            self.add_transaction_modal.ui(ui, suggestions)
+        } else {
+            self.add_transaction_modal.ui(ui, &Suggestions::default())
+        };
+
         if tx_created {
             self.transactions = Promise::spawn_async({
                 let manager = self.manager.to_owned();
@@ -61,6 +71,7 @@ impl Tab {
                 }
             });
             self.visible_transactions = None;
+            self.add_transaction_modal_suggestions = None;
         }
 
         let accounts_response = SidePanel::left("accounts_tree")

@@ -1,2 +1,2 @@
 mod ui;
-pub use ui::NewTransactionModal;
+pub use ui::{NewTransactionModal, Suggestions};

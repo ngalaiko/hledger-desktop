@@ -12,7 +12,8 @@ use tauri_egui::egui::{Align, Button, ComboBox, Layout, TextEdit, Ui, Widget};
 
 use crate::hledger::{self, Amount, Manager};
 
-struct Suggestions {
+#[derive(Default)]
+pub struct Suggestions {
     descriptions: Vec<String>,
     account_names: Vec<String>,
     destinations: Vec<path::PathBuf>,
@@ -74,9 +75,7 @@ impl NewTransactionModal {
         }
     }
 
-    pub fn ui(&mut self, ui: &mut Ui, transactions: &[hledger::Transaction]) -> bool {
-        let suggestions = Suggestions::from(transactions);
-
+    pub fn ui(&mut self, ui: &mut Ui, suggestions: &Suggestions) -> bool {
         let modal = self.modal.get_or_insert_with(|| {
             EguiModal::new(ui.ctx(), "new tranaction modal").with_close_on_outside_click(true)
         });

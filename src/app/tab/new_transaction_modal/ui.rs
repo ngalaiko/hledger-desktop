@@ -74,7 +74,7 @@ impl NewTransactionModal {
         }
     }
 
-    pub fn ui(&mut self, ui: &mut Ui, transactions: &[hledger::Transaction]) {
+    pub fn ui(&mut self, ui: &mut Ui, transactions: &[hledger::Transaction]) -> bool {
         let suggestions = Suggestions::from(transactions);
 
         let modal = self.modal.get_or_insert_with(|| {
@@ -229,12 +229,21 @@ impl NewTransactionModal {
             });
         });
 
+        let is_success = self
+            .creating
+            .as_ref()
+            .and_then(|p| p.ready().map(|r| r.is_ok()))
+            .unwrap_or(false);
+
         if !modal.is_open() {
             self.clear();
         }
+
+        is_success
     }
 
     fn clear(&mut self) {
+        self.creating = None;
         self.input_description.clear();
         self.input_postings.clear();
     }

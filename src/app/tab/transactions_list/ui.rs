@@ -2,7 +2,6 @@
 /// - display rolling balance
 /// - do not wrap text inside table
 /// - wrap account names like a:b:account, similar to how hledger does it
-/// - display newly added transaction
 use egui_extras::{Column, TableBuilder};
 use tauri_egui::egui::{TextStyle, Ui};
 

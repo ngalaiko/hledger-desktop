@@ -11,6 +11,9 @@ use super::{
 };
 
 pub struct Tab {
+    manager: Manager,
+    file_path: path::PathBuf,
+
     state: State,
 
     accounts_tree: AccountsTree,
@@ -32,10 +35,11 @@ impl Tab {
                 }
             }),
             visible_transactions: None,
-
             accounts_tree: AccountsTree::new(manager, &file_path, &state.tree.clone()),
             add_transaction_modal: NewTransactionModal::new(manager),
+            manager: manager.to_owned(),
             state,
+            file_path,
         }
     }
 
@@ -44,7 +48,20 @@ impl Tab {
     }
 
     pub fn ui(&mut self, ui: &mut Ui) -> Response {
-        self.add_transaction_modal.ui(ui, self.visible_transactions.as_ref().unwrap_or(&vec![]));
+        let tx_created = self
+            .add_transaction_modal
+            .ui(ui, self.visible_transactions.as_ref().unwrap_or(&vec![]));
+        if tx_created {
+            self.transactions = Promise::spawn_async({
+                let manager = self.manager.to_owned();
+                let file_path = self.file_path.to_owned();
+                async move {
+                    let client = manager.client(file_path).await?;
+                    client.transactions().await
+                }
+            });
+            self.visible_transactions = None;
+        }
 
         let accounts_response = SidePanel::left("accounts_tree")
             .show(ui.ctx(), |ui| {

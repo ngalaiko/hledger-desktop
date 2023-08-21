@@ -30,7 +30,7 @@ serde_json = "1.0.104"
 egui-modal = "0.2.4"
 regex = "1.9.1"
 lazy_static = "1.4.0"
-egui_autocomplete = { git = "https://github.com/ngalaiko/egui_autocomplete", branch = "master" }
+egui_autocomplete = "0.2.0"
 
 [build-dependencies]
 tauri-build = { version = "=2.0.0-alpha.6", features = [] }

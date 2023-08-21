@@ -87,111 +87,107 @@ impl NewTransactionModal {
             .unwrap_or(false);
 
         modal.show(|ui| {
-            modal.frame(ui, |ui| {
-                ui.vertical(|ui| {
-                    ui.horizontal(|ui| {
-                        ui.add(DatePickerButton::new(&mut self.input_date).calendar_week(true));
+            ui.vertical(|ui| {
+                ui.horizontal(|ui| {
+                    ui.add(DatePickerButton::new(&mut self.input_date).calendar_week(true));
 
-                        ui.add(
-                            AutoCompleteTextEdit::new(
-                                &mut self.input_description,
-                                &suggestions.descriptions,
-                                10,
-                            )
-                            .hint_text("description"),
-                        );
-                    });
+                    ui.add(
+                        AutoCompleteTextEdit::new(
+                            &mut self.input_description,
+                            &suggestions.descriptions,
+                        )
+                        .highlight_matches(true)
+                        .set_text_edit_properties(|text_edit| text_edit.hint_text("description")),
+                    );
+                });
 
-                    self.input_postings = self
-                        .input_postings
-                        .iter_mut()
-                        .enumerate()
-                        .filter_map(|(i, (account_name, amount))| {
-                            ui.horizontal(|ui| {
-                                ui.add(
-                                    AutoCompleteTextEdit::new(
-                                        account_name,
-                                        &suggestions.account_names,
-                                        10,
-                                    )
-                                    .hint_text(format!("account {}", i + 1).as_str())
-                                    .interactive(!is_loading),
-                                );
+                self.input_postings = self
+                    .input_postings
+                    .iter_mut()
+                    .enumerate()
+                    .filter_map(|(i, (account_name, amount))| {
+                        ui.horizontal(|ui| {
+                            ui.add(
+                                AutoCompleteTextEdit::new(account_name, &suggestions.account_names)
+                                    .highlight_matches(true)
+                                    .set_text_edit_properties(move |text_edit| {
+                                        text_edit
+                                            .hint_text(format!("account {}", i + 1))
+                                            .interactive(!is_loading)
+                                    }),
+                            );
 
-                                let is_valid_amount = amount.parse::<Amount>().is_ok();
-                                TextEdit::singleline(amount)
-                                    .interactive(!is_loading)
-                                    .hint_text(format!("amount {}", i + 1).as_str())
-                                    .text_color(if is_valid_amount {
-                                        ui.visuals().widgets.inactive.text_color()
-                                    } else {
-                                        ui.style().visuals.error_fg_color
-                                    })
-                                    .ui(ui);
+                            let is_valid_amount = amount.parse::<Amount>().is_ok();
+                            TextEdit::singleline(amount)
+                                .interactive(!is_loading)
+                                .hint_text(format!("amount {}", i + 1).as_str())
+                                .text_color(if is_valid_amount {
+                                    ui.visuals().widgets.inactive.text_color()
+                                } else {
+                                    ui.style().visuals.error_fg_color
+                                })
+                                .ui(ui);
 
-                                if !is_loading {
-                                    if Button::new("❌").ui(ui).clicked() {
-                                        None
-                                    } else {
-                                        Some((account_name.clone(), amount.clone()))
-                                    }
+                            if !is_loading {
+                                if Button::new("❌").ui(ui).clicked() {
+                                    None
                                 } else {
                                     Some((account_name.clone(), amount.clone()))
                                 }
-                            })
-                            .inner
-                        })
-                        .collect::<Vec<_>>();
-
-                    let new_posting_response = ui
-                        .horizontal(|ui| {
-                            let mut new_account = String::new();
-                            let mut new_amount = String::new();
-                            let new_account_response = TextEdit::singleline(&mut new_account)
-                                .interactive(!is_loading)
-                                .hint_text(
-                                    format!("account {}", self.input_postings.len() + 1).as_str(),
-                                )
-                                .ui(ui);
-                            let new_amount_response = TextEdit::singleline(&mut new_amount)
-                                .interactive(!is_loading)
-                                .hint_text(
-                                    format!("amount {}", self.input_postings.len() + 1).as_str(),
-                                )
-                                .ui(ui);
-
-                            if new_account_response.union(new_amount_response).changed() {
-                                Some((new_account.clone(), new_amount))
                             } else {
-                                None
+                                Some((account_name.clone(), amount.clone()))
                             }
                         })
-                        .inner;
+                        .inner
+                    })
+                    .collect::<Vec<_>>();
 
-                    if let Some(posting) = new_posting_response {
-                        self.input_postings.push(posting);
-                    }
+                let new_posting_response = ui
+                    .horizontal(|ui| {
+                        let mut new_account = String::new();
+                        let mut new_amount = String::new();
+                        let new_account_response = TextEdit::singleline(&mut new_account)
+                            .interactive(!is_loading)
+                            .hint_text(
+                                format!("account {}", self.input_postings.len() + 1).as_str(),
+                            )
+                            .ui(ui);
+                        let new_amount_response = TextEdit::singleline(&mut new_amount)
+                            .interactive(!is_loading)
+                            .hint_text(format!("amount {}", self.input_postings.len() + 1).as_str())
+                            .ui(ui);
 
-                    if self.input_destination.is_none() {
-                        self.input_destination = suggestions.destinations.first().cloned();
-                    }
-                    let mut selected = self.input_destination.as_ref().unwrap();
-                    ComboBox::from_id_source("destination file")
-                        .selected_text(format!(
-                            "{}",
-                            self.input_destination.as_ref().unwrap().display()
-                        ))
-                        .show_ui(ui, |ui| {
-                            for destination in &suggestions.destinations {
-                                ui.selectable_value(
-                                    &mut selected,
-                                    destination,
-                                    format!("{}", destination.display()),
-                                );
-                            }
-                        });
-                    self.input_destination.replace(selected.to_owned());
-                });
+                        if new_account_response.union(new_amount_response).changed() {
+                            Some((new_account.clone(), new_amount))
+                        } else {
+                            None
+                        }
+                    })
+                    .inner;
+
+                if let Some(posting) = new_posting_response {
+                    self.input_postings.push(posting);
+                }
+
+                if self.input_destination.is_none() {
+                    self.input_destination = suggestions.destinations.first().cloned();
+                }
+                let mut selected = self.input_destination.as_ref().unwrap();
+                ComboBox::from_id_source("destination file")
+                    .selected_text(format!(
+                        "{}",
+                        self.input_destination.as_ref().unwrap().display()
+                    ))
+                    .show_ui(ui, |ui| {
+                        for destination in &suggestions.destinations {
+                            ui.selectable_value(
+                                &mut selected,
+                                destination,
+                                format!("{}", destination.display()),
+                            );
+                        }
+                    });
+                self.input_destination.replace(selected.to_owned());
             });
 
             ui.separator();

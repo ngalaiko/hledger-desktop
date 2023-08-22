@@ -248,7 +248,7 @@ impl fmt::Display for Amount {
             (decimal_mantissa % 10i64.pow(self.quantity.decimal_places as u32)).to_string();
 
         let quantity = if self.quantity.decimal_places == 0 {
-            integer_part
+            format!("{}{}", if is_negative { "-" } else { "" }, integer_part)
         } else {
             format!(
                 "{}{}{}{:0>width$}",
@@ -581,6 +581,25 @@ mod tests {
                     price: None,
                 },
                 "12,000.00 SEK",
+            ),
+            (
+                Amount {
+                    commodity: "SEK".to_string(),
+                    quantity: Quantity {
+                        decimal_mantissa: -100,
+                        decimal_places: 0,
+                        floating_point: -100.0,
+                    },
+                    style: AmountStyle {
+                        commodity_side: Side::Right,
+                        spaced: true,
+                        precision: 0,
+                        decimal_point: None,
+                        digit_groups: None,
+                    },
+                    price: None,
+                },
+                "-100 SEK",
             ),
             (
                 Amount {

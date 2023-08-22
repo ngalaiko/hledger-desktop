@@ -5,6 +5,7 @@ desktop app for [hledger][] built with [tauri][] and [egui][]
 ## roadmap
 
 - [ ] feature parity with hledger-web
+- [ ] update / delete transactions
 
 ## development
 

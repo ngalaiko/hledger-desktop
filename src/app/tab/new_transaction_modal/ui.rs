@@ -9,7 +9,7 @@ use egui_modal::Modal as EguiModal;
 use poll_promise::Promise;
 use tauri_egui::egui::{Align, ComboBox, Label, Layout, RichText, TextEdit, Ui};
 
-use crate::hledger::{self, Amount, Manager};
+use crate::hledger::{self, Amount, Manager, ParseAmountError};
 
 #[derive(Default)]
 pub struct Suggestions {
@@ -57,7 +57,7 @@ pub struct NewTransactionModal {
 
     input_date: NaiveDate,
     input_description: String,
-    input_postings: Vec<(String, String)>,
+    input_postings: Vec<(String, AmountInput)>,
     input_destination: Option<path::PathBuf>,
 }
 
@@ -69,7 +69,7 @@ impl NewTransactionModal {
             modal: None,
             input_date: chrono::offset::Local::now().date_naive(),
             input_description: String::new(),
-            input_postings: vec![(String::new(), String::new())],
+            input_postings: vec![(String::new(), AmountInput::new())],
             input_destination: None,
         }
     }
@@ -106,19 +106,14 @@ impl NewTransactionModal {
                 .count();
 
             if empty_input_postings == 0 {
-                self.input_postings.push((String::new(), String::new()))
+                self.input_postings
+                    .push((String::new(), AmountInput::new()))
             }
 
             self.input_postings
                 .iter_mut()
                 .enumerate()
                 .for_each(|(i, (account_name, amount))| {
-                    let amount_error = if amount.is_empty() {
-                        None
-                    } else {
-                        amount.parse::<Amount>().err()
-                    };
-
                     ui.horizontal(|ui| {
                         ui.add(
                             AutoCompleteTextEdit::new(account_name, &suggestions.account_names)
@@ -130,19 +125,11 @@ impl NewTransactionModal {
                                 }),
                         );
 
-                        ui.add(
-                            TextEdit::singleline(amount)
-                                .interactive(!is_loading)
-                                .hint_text(format!("amount {}", i + 1).as_str())
-                                .text_color(if amount_error.is_none() {
-                                    ui.visuals().widgets.inactive.text_color()
-                                } else {
-                                    ui.style().visuals.error_fg_color
-                                }),
-                        );
+                        amount
+                            .ui(ui, !is_loading, format!("amount {}", i + 1));
                     });
 
-                    if let Some(error) = amount_error {
+                    if let Some(error) = amount.error() {
                         ui.with_layout(Layout::right_to_left(Align::Min), |ui| {
                             ui.add(Label::new(
                                 RichText::new(format!("invalid amount: {}", error))
@@ -202,7 +189,7 @@ impl NewTransactionModal {
                                         })
                                         .map(|(account_name, amount)| hledger::Posting {
                                             account: account_name.parse().unwrap(),
-                                            amount: vec![amount.parse().unwrap()],
+                                            amount: vec![amount.value().unwrap()],
                                             ..Default::default()
                                         })
                                         .collect(),
@@ -232,12 +219,57 @@ impl NewTransactionModal {
     fn clear(&mut self) {
         self.creating = None;
         self.input_description.clear();
-        self.input_postings = vec![(String::new(), String::new())];
+        self.input_postings = vec![(String::new(), AmountInput::new())];
     }
 
     pub fn open(&self) {
         if let Some(ref modal) = self.modal {
             modal.open()
+        }
+    }
+}
+
+struct AmountInput {
+    input_text: String,
+    parsed: Result<Amount, ParseAmountError>,
+}
+
+impl AmountInput {
+    pub fn new() -> Self {
+        Self {
+            input_text: String::new(),
+            parsed: Ok(Amount::default()),
+        }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.input_text.is_empty()
+    }
+
+    pub fn value(&self) -> Option<Amount> {
+        self.parsed.as_ref().ok().cloned()
+    }
+
+    pub fn error(&self) -> Option<&ParseAmountError> {
+        self.parsed.as_ref().err()
+    }
+
+    pub fn ui(&mut self, ui: &mut Ui, interactive: bool, hint: String) {
+        if ui.add(
+            TextEdit::singleline(&mut self.input_text)
+                .interactive(interactive)
+                .hint_text(&hint)
+                .text_color(if self.parsed.is_ok() {
+                    ui.visuals().widgets.inactive.text_color()
+                } else {
+                    ui.style().visuals.error_fg_color
+                }),
+        ).changed() {
+            self.parsed = if self.input_text.is_empty() {
+                Ok(Amount::default())
+            } else {
+                self.input_text.parse()
+            };
         }
     }
 }

@@ -16,7 +16,7 @@ pub struct AccountDeclarationInfo {
     pub declaration_order: usize,
 }
 
-#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Default, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Quantity {
     #[serde(rename = "decimalMantissa")]
     pub decimal_mantissa: i64,
@@ -26,11 +26,12 @@ pub struct Quantity {
     pub floating_point: f64,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum Side {
     #[serde(rename = "L")]
     Left,
     #[serde(rename = "R")]
+    #[default]
     Right,
 }
 
@@ -51,7 +52,7 @@ impl Iterator for DigitGroupStyle {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Default, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct AmountStyle {
     #[serde(rename = "ascommodityside")]
     pub commodity_side: Side,
@@ -74,7 +75,7 @@ pub enum AmountPrice {
     UnitPrice(Amount),
 }
 
-#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Default, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Amount {
     #[serde(rename = "acommodity")]
     pub commodity: Commodity,

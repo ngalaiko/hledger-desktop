@@ -1,9 +1,8 @@
 /// TODO:
 /// - display rolling balance
-/// - do not wrap text inside table
 /// - wrap account names like a:b:account, similar to how hledger does it
 use egui_extras::{Column, TableBuilder};
-use tauri_egui::egui::{TextStyle, Ui};
+use tauri_egui::egui::{Label, RichText, TextStyle, Ui};
 
 use crate::hledger;
 
@@ -35,16 +34,27 @@ pub fn ui(ui: &mut Ui, transactions: &[hledger::Transaction]) {
             body.heterogeneous_rows(heights.into_iter(), |row_index, mut row| {
                 let transaction = &transactions[row_index];
                 row.col(|ui| {
-                    ui.monospace(&transaction.date.to_string());
+                    ui.add(
+                        Label::new(RichText::new(transaction.date.to_string()).monospace())
+                            .wrap(false),
+                    );
                 });
                 row.col(|ui| {
-                    ui.monospace(&transaction.description);
+                    ui.add(
+                        Label::new(RichText::new(transaction.description.to_string()).monospace())
+                            .wrap(false),
+                    );
                 });
                 row.col(|ui| {
                     ui.vertical(|ui| {
                         transaction.postings.iter().for_each(|posting| {
                             posting.amount.iter().for_each(|_| {
-                                ui.monospace(&posting.account.to_string());
+                                ui.add(
+                                    Label::new(
+                                        RichText::new(posting.account.to_string()).monospace(),
+                                    )
+                                    .wrap(false),
+                                );
                             });
                         });
                     });
@@ -53,7 +63,10 @@ pub fn ui(ui: &mut Ui, transactions: &[hledger::Transaction]) {
                     ui.vertical(|ui| {
                         transaction.postings.iter().for_each(|posting| {
                             posting.amount.iter().for_each(|amount| {
-                                ui.monospace(amount.to_string());
+                                ui.add(
+                                    Label::new(RichText::new(amount.to_string()).monospace())
+                                        .wrap(false),
+                                );
                             });
                         });
                     });

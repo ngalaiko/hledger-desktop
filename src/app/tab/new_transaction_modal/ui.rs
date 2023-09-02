@@ -7,9 +7,9 @@ use egui_autocomplete::AutoCompleteTextEdit;
 use egui_extras::DatePickerButton;
 use egui_modal::Modal as EguiModal;
 use poll_promise::Promise;
-use tauri_egui::egui::{Align, ComboBox, Label, Layout, RichText, TextEdit, Ui};
+use tauri_egui::egui::{Align, Button, ComboBox, Label, Layout, RichText, TextEdit, Ui};
 
-use crate::hledger::{self, AccountName, Amount, Manager, ParseAmountError};
+use crate::hledger::{self, AccountName, Amount, Manager, ParseAccountNameError, ParseAmountError};
 
 #[derive(Default)]
 pub struct Suggestions {
@@ -57,7 +57,7 @@ pub struct NewTransactionModal {
 
     input_date: NaiveDate,
     input_description: String,
-    input_postings: Vec<(AccountInput, AmountInput)>,
+    input_postings: PostingsInput,
     input_destination: Option<path::PathBuf>,
 }
 
@@ -69,7 +69,7 @@ impl NewTransactionModal {
             modal: None,
             input_date: chrono::offset::Local::now().date_naive(),
             input_description: String::new(),
-            input_postings: vec![(AccountInput::new(), AmountInput::new())],
+            input_postings: PostingsInput::new(),
             input_destination: None,
         }
     }
@@ -99,41 +99,7 @@ impl NewTransactionModal {
                 );
             });
 
-            let empty_input_postings = self
-                .input_postings
-                .iter()
-                .filter(|(account_name, amount)| account_name.is_empty() && amount.is_empty())
-                .count();
-
-            if empty_input_postings == 0 {
-                self.input_postings
-                    .push((AccountInput::new(), AmountInput::new()))
-            }
-
-            self.input_postings
-                .iter_mut()
-                .enumerate()
-                .for_each(|(i, (account_name, amount))| {
-                    ui.horizontal(|ui| {
-                        account_name.ui(
-                            ui,
-                            !is_loading,
-                            &format!("account {}", i + 1),
-                            &suggestions.account_names,
-                        );
-                        amount.ui(ui, !is_loading, &format!("amount {}", i + 1));
-                    });
-
-                    if let Some(error) = amount.error() {
-                        ui.with_layout(Layout::right_to_left(Align::Min), |ui| {
-                            ui.add(Label::new(
-                                RichText::new(format!("invalid amount: {}", error))
-                                    .small()
-                                    .color(ui.style().visuals.error_fg_color),
-                            ));
-                        });
-                    }
-                });
+            self.input_postings.ui(ui, is_loading, suggestions);
 
             ui.separator();
 
@@ -168,30 +134,25 @@ impl NewTransactionModal {
                     } else if let Some(Ok(())) = self.creating.as_ref().and_then(|p| p.ready()) {
                         modal.close();
                     } else {
-                        let button_response = ui.button("add");
-                        if button_response.clicked() {
-                            self.creating = Some(Promise::spawn_async({
-                                let manager = self.manager.clone();
-                                let file_path = self.input_destination.as_ref().unwrap().clone();
-                                let tx = hledger::Transaction {
-                                    date: self.input_date,
-                                    description: self.input_description.clone(),
-                                    postings: self
-                                        .input_postings
-                                        .iter()
-                                        .filter(|(account_name, amount)| {
-                                            !account_name.is_empty() && !amount.is_empty()
-                                        })
-                                        .map(|(account_name, amount)| hledger::Posting {
-                                            account: account_name.value().unwrap(),
-                                            amount: vec![amount.value().unwrap()],
+                        match self.input_postings.value() {
+                            Err(PostingError::InvalidPostings) => {
+                                ui.add_enabled(false, Button::new("add"));
+                            },
+                            Ok(postings) => {
+                                if ui.button("add").clicked() {
+                                    self.creating = Some(Promise::spawn_async({
+                                        let manager = self.manager.clone();
+                                        let file_path = self.input_destination.as_ref().unwrap().clone();
+                                        let tx = hledger::Transaction {
+                                            date: self.input_date,
+                                            description: self.input_description.clone(),
+                                            postings,
                                             ..Default::default()
-                                        })
-                                        .collect(),
-                                    ..Default::default()
-                                };
-                                async move { manager.client(file_path).await?.add(&tx).await }
-                            }));
+                                        };
+                                        async move { manager.client(file_path).await?.add(&tx).await }
+                                    }));
+                                }
+                            }
                         }
                     }
                 });
@@ -214,7 +175,7 @@ impl NewTransactionModal {
     fn clear(&mut self) {
         self.creating = None;
         self.input_description.clear();
-        self.input_postings = vec![(AccountInput::new(), AmountInput::new())];
+        self.input_postings.clear();
     }
 
     pub fn open(&self) {
@@ -241,12 +202,8 @@ impl AmountInput {
         self.input_text.is_empty()
     }
 
-    pub fn value(&self) -> Option<Amount> {
-        self.parsed.as_ref().ok().cloned()
-    }
-
-    pub fn error(&self) -> Option<&ParseAmountError> {
-        self.parsed.as_ref().err()
+    pub fn value(&self) -> Result<Amount, ParseAmountError> {
+        self.parsed.clone()
     }
 
     pub fn ui(&mut self, ui: &mut Ui, interactive: bool, hint: &str) {
@@ -274,7 +231,7 @@ impl AmountInput {
 
 struct AccountInput {
     input_text: String,
-    parsed: Result<AccountName, ()>,
+    parsed: Result<AccountName, ParseAccountNameError>,
 }
 
 impl AccountInput {
@@ -285,8 +242,8 @@ impl AccountInput {
         }
     }
 
-    pub fn value(&self) -> Option<AccountName> {
-        self.parsed.as_ref().ok().cloned()
+    pub fn value(&self) -> Result<AccountName, ParseAccountNameError> {
+        self.parsed.clone()
     }
 
     pub fn is_empty(&self) -> bool {
@@ -298,6 +255,7 @@ impl AccountInput {
         ui.add(
             AutoCompleteTextEdit::new(&mut self.input_text, suggestions)
                 .highlight_matches(true)
+                .max_suggestions(5)
                 .set_text_edit_properties(move |text_edit| {
                     text_edit.hint_text(hint).interactive(interactive)
                 }),
@@ -308,5 +266,89 @@ impl AccountInput {
         } else {
             self.input_text.parse()
         };
+    }
+}
+
+struct PostingsInput {
+    input_postings: Vec<(AccountInput, AmountInput)>,
+}
+
+#[derive(Debug, thiserror::Error)]
+enum PostingError {
+    #[error("one or more postings are invalid")]
+    InvalidPostings,
+}
+
+impl PostingsInput {
+    pub fn new() -> Self {
+        Self {
+            input_postings: vec![(AccountInput::new(), AmountInput::new())],
+        }
+    }
+
+    pub fn value(&self) -> Result<Vec<hledger::Posting>, PostingError> {
+        if self
+            .input_postings
+            .iter()
+            .filter(|(account_name, amount)| !account_name.is_empty() || !amount.is_empty())
+            .any(|(account_name, amount)| account_name.value().is_err() || amount.value().is_err())
+        {
+            return Err(PostingError::InvalidPostings);
+        };
+
+        let postings = self
+            .input_postings
+            .iter()
+            .filter(|(account_name, amount)| !account_name.is_empty() && !amount.is_empty())
+            .map(|(account_name, amount)| hledger::Posting {
+                account: account_name.value().unwrap(),
+                amount: vec![amount.value().unwrap()],
+                ..Default::default()
+            })
+            .collect();
+
+        Ok(postings)
+    }
+
+    pub fn clear(&mut self) {
+        *self = Self::new()
+    }
+
+    pub fn ui(&mut self, ui: &mut Ui, is_loading: bool, suggestions: &Suggestions) {
+        let empty_input_postings = self
+            .input_postings
+            .iter()
+            .filter(|(account_name, amount)| account_name.is_empty() && amount.is_empty())
+            .count();
+
+        if empty_input_postings == 0 {
+            self.input_postings
+                .push((AccountInput::new(), AmountInput::new()))
+        }
+
+        self.input_postings
+            .iter_mut()
+            .enumerate()
+            .for_each(|(i, (account_name, amount))| {
+                ui.horizontal(|ui| {
+                    account_name.ui(
+                        ui,
+                        !is_loading,
+                        &format!("account {}", i + 1),
+                        &suggestions.account_names,
+                    );
+                    amount.ui(ui, !is_loading, &format!("amount {}", i + 1));
+                });
+
+                if let Err(error) = amount.value() {
+                    ui.with_layout(Layout::right_to_left(Align::Min), |ui| {
+                        ui.add(Label::new(
+                            RichText::new(format!("invalid amount: {}", error))
+                                .small()
+                                .color(ui.style().visuals.error_fg_color),
+                        ));
+                    });
+                }
+            });
     }
 }

@@ -95,7 +95,7 @@ lazy_static! {
     static ref QUOTED_COMMODITY: Regex = Regex::new(r#"^(".+")|(".+")$"#).unwrap();
 }
 
-#[derive(Debug, thiserror::Error, PartialEq)]
+#[derive(Debug, Clone, thiserror::Error, PartialEq)]
 pub enum ParseAmountError {
     #[error("failed to parse quantity: {0}")]
     InvalidAmout(String),
@@ -667,10 +667,19 @@ impl AccountName {
     }
 }
 
+#[derive(Debug, Clone, thiserror::Error)]
+pub enum ParseAccountNameError {
+    #[error("must not be empty")]
+    Empty,
+}
+
 impl FromStr for AccountName {
-    type Err = ();
+    type Err = ParseAccountNameError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if s.is_empty() {
+            return Err(ParseAccountNameError::Empty);
+        }
         Ok(Self(s.to_string()))
     }
 }

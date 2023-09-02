@@ -9,7 +9,7 @@ use egui_modal::Modal as EguiModal;
 use poll_promise::Promise;
 use tauri_egui::egui::{Align, ComboBox, Label, Layout, RichText, TextEdit, Ui};
 
-use crate::hledger::{self, Amount, Manager, ParseAmountError};
+use crate::hledger::{self, AccountName, Amount, Manager, ParseAmountError};
 
 #[derive(Default)]
 pub struct Suggestions {
@@ -57,7 +57,7 @@ pub struct NewTransactionModal {
 
     input_date: NaiveDate,
     input_description: String,
-    input_postings: Vec<(String, AmountInput)>,
+    input_postings: Vec<(AccountInput, AmountInput)>,
     input_destination: Option<path::PathBuf>,
 }
 
@@ -69,7 +69,7 @@ impl NewTransactionModal {
             modal: None,
             input_date: chrono::offset::Local::now().date_naive(),
             input_description: String::new(),
-            input_postings: vec![(String::new(), AmountInput::new())],
+            input_postings: vec![(AccountInput::new(), AmountInput::new())],
             input_destination: None,
         }
     }
@@ -107,7 +107,7 @@ impl NewTransactionModal {
 
             if empty_input_postings == 0 {
                 self.input_postings
-                    .push((String::new(), AmountInput::new()))
+                    .push((AccountInput::new(), AmountInput::new()))
             }
 
             self.input_postings
@@ -115,18 +115,13 @@ impl NewTransactionModal {
                 .enumerate()
                 .for_each(|(i, (account_name, amount))| {
                     ui.horizontal(|ui| {
-                        ui.add(
-                            AutoCompleteTextEdit::new(account_name, &suggestions.account_names)
-                                .highlight_matches(true)
-                                .set_text_edit_properties(move |text_edit| {
-                                    text_edit
-                                        .hint_text(format!("account {}", i + 1))
-                                        .interactive(!is_loading)
-                                }),
+                        account_name.ui(
+                            ui,
+                            !is_loading,
+                            &format!("account {}", i + 1),
+                            &suggestions.account_names,
                         );
-
-                        amount
-                            .ui(ui, !is_loading, format!("amount {}", i + 1));
+                        amount.ui(ui, !is_loading, &format!("amount {}", i + 1));
                     });
 
                     if let Some(error) = amount.error() {
@@ -188,7 +183,7 @@ impl NewTransactionModal {
                                             !account_name.is_empty() && !amount.is_empty()
                                         })
                                         .map(|(account_name, amount)| hledger::Posting {
-                                            account: account_name.parse().unwrap(),
+                                            account: account_name.value().unwrap(),
                                             amount: vec![amount.value().unwrap()],
                                             ..Default::default()
                                         })
@@ -219,7 +214,7 @@ impl NewTransactionModal {
     fn clear(&mut self) {
         self.creating = None;
         self.input_description.clear();
-        self.input_postings = vec![(String::new(), AmountInput::new())];
+        self.input_postings = vec![(AccountInput::new(), AmountInput::new())];
     }
 
     pub fn open(&self) {
@@ -254,22 +249,64 @@ impl AmountInput {
         self.parsed.as_ref().err()
     }
 
-    pub fn ui(&mut self, ui: &mut Ui, interactive: bool, hint: String) {
-        if ui.add(
-            TextEdit::singleline(&mut self.input_text)
-                .interactive(interactive)
-                .hint_text(&hint)
-                .text_color(if self.parsed.is_ok() {
-                    ui.visuals().widgets.inactive.text_color()
-                } else {
-                    ui.style().visuals.error_fg_color
-                }),
-        ).changed() {
+    pub fn ui(&mut self, ui: &mut Ui, interactive: bool, hint: &str) {
+        if ui
+            .add(
+                TextEdit::singleline(&mut self.input_text)
+                    .interactive(interactive)
+                    .hint_text(hint)
+                    .text_color(if self.parsed.is_ok() {
+                        ui.visuals().widgets.inactive.text_color()
+                    } else {
+                        ui.style().visuals.error_fg_color
+                    }),
+            )
+            .changed()
+        {
             self.parsed = if self.input_text.is_empty() {
                 Ok(Amount::default())
             } else {
                 self.input_text.parse()
             };
         }
+    }
+}
+
+struct AccountInput {
+    input_text: String,
+    parsed: Result<AccountName, ()>,
+}
+
+impl AccountInput {
+    pub fn new() -> Self {
+        Self {
+            input_text: String::new(),
+            parsed: Ok(AccountName::default()),
+        }
+    }
+
+    pub fn value(&self) -> Option<AccountName> {
+        self.parsed.as_ref().ok().cloned()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.input_text.is_empty()
+    }
+
+    pub fn ui(&mut self, ui: &mut Ui, interactive: bool, hint: &str, suggestions: &[String]) {
+        let hint = hint.to_owned();
+        ui.add(
+            AutoCompleteTextEdit::new(&mut self.input_text, suggestions)
+                .highlight_matches(true)
+                .set_text_edit_properties(move |text_edit| {
+                    text_edit.hint_text(hint).interactive(interactive)
+                }),
+        );
+
+        self.parsed = if self.input_text.is_empty() {
+            Ok(AccountName::default())
+        } else {
+            self.input_text.parse()
+        };
     }
 }

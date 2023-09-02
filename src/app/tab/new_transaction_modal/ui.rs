@@ -7,7 +7,7 @@ use egui_autocomplete::AutoCompleteTextEdit;
 use egui_extras::DatePickerButton;
 use egui_modal::Modal as EguiModal;
 use poll_promise::Promise;
-use tauri_egui::egui::{Align, ComboBox, Layout, TextEdit, Ui, Widget};
+use tauri_egui::egui::{Align, ComboBox, Label, Layout, RichText, TextEdit, Ui};
 
 use crate::hledger::{self, Amount, Manager};
 
@@ -113,6 +113,12 @@ impl NewTransactionModal {
                 .iter_mut()
                 .enumerate()
                 .for_each(|(i, (account_name, amount))| {
+                    let amount_error = if amount.is_empty() {
+                        None
+                    } else {
+                        amount.parse::<Amount>().err()
+                    };
+
                     ui.horizontal(|ui| {
                         ui.add(
                             AutoCompleteTextEdit::new(account_name, &suggestions.account_names)
@@ -124,17 +130,27 @@ impl NewTransactionModal {
                                 }),
                         );
 
-                        let is_valid_amount = amount.parse::<Amount>().is_ok();
-                        TextEdit::singleline(amount)
-                            .interactive(!is_loading)
-                            .hint_text(format!("amount {}", i + 1).as_str())
-                            .text_color(if is_valid_amount {
-                                ui.visuals().widgets.inactive.text_color()
-                            } else {
-                                ui.style().visuals.error_fg_color
-                            })
-                            .ui(ui);
+                        ui.add(
+                            TextEdit::singleline(amount)
+                                .interactive(!is_loading)
+                                .hint_text(format!("amount {}", i + 1).as_str())
+                                .text_color(if amount_error.is_none() {
+                                    ui.visuals().widgets.inactive.text_color()
+                                } else {
+                                    ui.style().visuals.error_fg_color
+                                }),
+                        );
                     });
+
+                    if let Some(error) = amount_error {
+                        ui.with_layout(Layout::right_to_left(Align::Min), |ui| {
+                            ui.add(Label::new(
+                                RichText::new(format!("invalid amount: {}", error))
+                                    .small()
+                                    .color(ui.style().visuals.error_fg_color),
+                            ));
+                        });
+                    }
                 });
 
             ui.separator();

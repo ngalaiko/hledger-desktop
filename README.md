@@ -4,14 +4,14 @@ desktop app for [hledger][] built with [tauri][] and [egui][]
 
 ## roadmap
 
-- [ ] feature parity with hledger-web
+- [ ] feature parity with [hledger-web][]
 - [ ] update / delete transactions
 
 ## development
 
 ### setup
 
-[hledger-desktop][] runs [hledger-web] instances to read and write data, so you need to prepare the binary first:
+[hledger-desktop][] runs [hledger-web][] instances to read and write data, so you need to prepare the binary first:
 
 1. [install hledger][]
 2. put installed hledger-web binary into [binaries][], specifying your architecture
@@ -22,7 +22,7 @@ desktop app for [hledger][] built with [tauri][] and [egui][]
 ### run
 
 ```bash
-cargo tauri dev
+cargo run
 ```
 
 [binaries]: ./binaries/

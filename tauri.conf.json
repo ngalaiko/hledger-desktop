@@ -8,7 +8,6 @@
       "active": true,
       "targets": ["app", "dmg"],
       "identifier": "rocks.galaiko.hledger.desktop",
-      "externalBin": ["binaries/hledger-web"],
       "category": "Finance"
     }
   }

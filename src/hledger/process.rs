@@ -1,4 +1,4 @@
-use std::{path, str};
+use std::{io, path, str, sync::Arc};
 
 use rand::Rng;
 use tauri::{async_runtime, AppHandle};
@@ -12,6 +12,8 @@ use url::Url;
 
 #[derive(thiserror::Error, Debug, Clone)]
 pub enum Error {
+    #[error("hledger-web not found")]
+    NotFound,
     #[error("failed to spawn hledger-web")]
     FailedToSpawn,
     #[error("failed to stop hledger-web")]
@@ -32,24 +34,37 @@ pub enum State {
 #[derive(Debug)]
 pub struct HLedgerWeb {
     endpoint: Url,
-    state_rx: watch::Receiver<State>,
+    state: (Arc<watch::Sender<State>>, watch::Receiver<State>),
     cancel_token: CancellationToken,
 }
 
 impl HLedgerWeb {
-    pub fn new<P: AsRef<path::Path>>(handle: &AppHandle, file_path: P) -> Result<Self, Error> {
+    pub async fn new<P: AsRef<path::Path>>(
+        handle: &AppHandle,
+        file_path: P,
+    ) -> Result<Self, Error> {
         let file_path = file_path.as_ref().to_path_buf();
         let port = rand::thread_rng().gen_range(32768..65536);
         let endpoint =
             Url::parse(format!("http://localhost:{}", port).as_str()).expect("failed to parse url");
-        let (state_tx, state_rx) = watch::channel(State::Starting);
+        let (state_tx, mut state_rx) = watch::channel(State::Starting);
+        let state_tx = Arc::new(state_tx);
         let cancel_token = CancellationToken::new();
         let c_cancel_token = cancel_token.clone();
         let _handle: async_runtime::JoinHandle<Result<(), Error>> = tauri::async_runtime::spawn({
             let handle = handle.clone();
+            let state_tx = state_tx.clone();
             async move {
                 match spawn(&handle, &file_path, &port).await {
-                    Err(error) => Err(error),
+                    Err(error) => {
+                        tracing::error!(
+                            "hledger-web ({}): failed to span: {}",
+                            file_path.display(),
+                            &error
+                        );
+                        state_tx.send(State::Stopped(Some(error.clone()))).unwrap();
+                        Err(error)
+                    }
                     Ok((mut rx, child)) => loop {
                         select! {
                             _ = c_cancel_token.cancelled() => {
@@ -108,29 +123,25 @@ impl HLedgerWeb {
             }
         });
 
+        while state_rx.changed().await.is_ok() {
+            match state_rx.borrow().clone() {
+                State::Starting => continue,
+                State::Running => break,
+                State::Stopped(error) => return Err(error.unwrap_or(Error::FailedToSpawn)),
+            }
+        }
+
         Ok(Self {
             endpoint,
-            state_rx,
+            state: (state_tx, state_rx),
             cancel_token,
         })
     }
 
-    pub async fn wait_until_running(&mut self) -> Result<(), Error> {
-        while self.state_rx.changed().await.is_ok() {
-            match self.state_rx.borrow().clone() {
-                State::Running => return Ok(()),
-                State::Stopped(None) => return Err(Error::FailedToSpawn),
-                State::Stopped(Some(error)) => return Err(error),
-                _ => {}
-            }
-        }
-        unreachable!()
-    }
-
     pub async fn stop(&mut self) -> Result<(), Error> {
         self.cancel_token.cancel();
-        while self.state_rx.changed().await.is_ok() {
-            match self.state_rx.borrow().clone() {
+        while self.state.1.changed().await.is_ok() {
+            match self.state.1.borrow().clone() {
                 State::Stopped(None) => return Ok(()),
                 State::Stopped(Some(error)) => return Err(error),
                 _ => {}
@@ -168,19 +179,17 @@ async fn spawn(
     ];
     handle
         .shell()
-        .sidecar("hledger-web")
-        .map_err(|e| {
-            tracing::error!(
-                "hledger-web ({}): failed to prepare sidecar: {}",
-                path.display(),
-                e
-            );
-            Error::FailedToSpawn
-        })?
+        .command("hledger-web")
         .args(args)
         .spawn()
-        .map_err(|e| {
-            tracing::error!("hledger-web ({}): failed to span: {}", path.display(), e);
-            Error::FailedToSpawn
+        .map_err(|err| match err {
+            tauri_plugin_shell::Error::Io(err) => {
+                if err.kind() == io::ErrorKind::NotFound {
+                    Error::NotFound
+                } else {
+                    Error::FailedToSpawn
+                }
+            }
+            _ => Error::FailedToSpawn,
         })
 }

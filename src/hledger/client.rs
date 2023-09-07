@@ -53,11 +53,10 @@ impl HLedgerWebInner {
         handle: &AppHandle,
         file_path: P,
     ) -> Result<Self, Error> {
-        let file_path = file_path.as_ref();
-        let mut process = process::HLedgerWeb::new(handle, file_path).map_err(Error::Process)?;
-        process.wait_until_running().await?;
         Ok(Self {
-            process,
+            process: process::HLedgerWeb::new(handle, file_path.as_ref())
+                .await
+                .map_err(Error::Process)?,
             client: Client::new(),
         })
     }

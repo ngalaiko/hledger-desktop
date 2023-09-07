@@ -29,7 +29,6 @@ impl Manager {
             Ok(entry.get().clone())
         } else {
             let new_client = Client::new(&self.handle, path.clone()).await?;
-            let new_client = new_client.clone();
             existing.or_insert(new_client.clone());
             Ok(new_client)
         }

@@ -107,107 +107,125 @@ impl FromStr for Amount {
     type Err = ParseAmountError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let s = s.trim();
+        if s.contains("@@") {
+            s.splitn(2, "@@")
+                .map(Self::from_str)
+                .collect::<Result<Vec<_>, _>>()
+                .map(|parsed| Amount {
+                    price: Some(Box::new(AmountPrice::TotalPrice(parsed[1].clone()))),
+                    ..parsed[0].clone()
+                })
+        } else if s.contains('@') {
+            s.splitn(2, '@')
+                .map(Self::from_str)
+                .collect::<Result<Vec<_>, _>>()
+                .map(|parsed| Amount {
+                    price: Some(Box::new(AmountPrice::UnitPrice(parsed[1].clone()))),
+                    ..parsed[0].clone()
+                })
+        } else {
+            let s = s.trim();
 
-        // maybe negative sign is before commodity
-        let is_negative = s.starts_with('-');
-        let s = s.trim_start_matches('-').trim_start_matches('+').trim();
+            // maybe negative sign is before commodity
+            let is_negative = s.starts_with('-');
+            let s = s.trim_start_matches('-').trim_start_matches('+').trim();
 
-        // first, determine commodity and it's side
-        let (side, commodity) = QUOTED_COMMODITY
-            .captures(s)
-            .and_then(|caps| {
-                caps.get(1)
-                    .map(|m| (Side::Left, m.as_str()))
-                    .or_else(|| caps.get(2).map(|m| (Side::Right, m.as_str())))
-            })
-            .or_else(|| {
-                UNQUOTED_COMMODITY.captures(s).and_then(|caps| {
+            // first, determine commodity and it's side
+            let (side, commodity) = QUOTED_COMMODITY
+                .captures(s)
+                .and_then(|caps| {
                     caps.get(1)
                         .map(|m| (Side::Left, m.as_str()))
                         .or_else(|| caps.get(2).map(|m| (Side::Right, m.as_str())))
                 })
+                .or_else(|| {
+                    UNQUOTED_COMMODITY.captures(s).and_then(|caps| {
+                        caps.get(1)
+                            .map(|m| (Side::Left, m.as_str()))
+                            .or_else(|| caps.get(2).map(|m| (Side::Right, m.as_str())))
+                    })
+                })
+                .unwrap_or((Side::Right, ""));
+
+            // remove parsed commodity from string
+            let s = s.replace(commodity, "");
+
+            if s.is_empty() {
+                return Err(ParseAmountError::MissingAmount);
+            }
+
+            // determine if commodity is spaced
+            let spaced = match side {
+                Side::Left => s.chars().next().unwrap().is_whitespace(),
+                Side::Right => s.chars().last().unwrap().is_whitespace(),
+            };
+
+            // remove spaces from string
+            let s = match side {
+                Side::Left => s.trim_start(),
+                Side::Right => s.trim_end(),
+            };
+
+            // maybe negative sign is before digit
+            let is_negative = if is_negative {
+                is_negative
+            } else {
+                s.starts_with('-')
+            };
+
+            // determine decimal point. it's either the last comma or the last dot
+            let decimal_point = s.chars().filter(|c| c.eq(&',') || c.eq(&'.')).last();
+
+            // precision is the number of digits after the decimal point
+            let decimal_places = decimal_point.map_or(0, |c| s.split(c).last().unwrap().len());
+
+            let decimal_mantissa = match decimal_point {
+                Some(d) => s
+                    .chars()
+                    .filter(|c| c.is_ascii_digit())
+                    .take_while(|c| !c.eq(&d))
+                    .collect::<String>(),
+                None => s.chars().filter(|c| c.is_ascii_digit()).collect::<String>(),
+            }
+            .parse::<i64>()
+            .map_err(|_| ParseAmountError::InvalidAmout(s.to_string()))?;
+
+            let floating_point = match decimal_point {
+                Some(d) => s
+                    .chars()
+                    .filter(|c| c.is_ascii_digit() || c.eq(&d))
+                    .map(|c| if c.eq(&d) { '.' } else { c }) // replace decimal point with dot
+                    .collect::<String>(),
+                None => s.chars().filter(|c| c.is_ascii_digit()).collect::<String>(),
+            }
+            .parse::<f64>()
+            .map_err(|_| ParseAmountError::InvalidAmout(s.to_string()))?;
+
+            Ok(Self {
+                commodity: commodity.replace('"', "").to_string(),
+                quantity: Quantity {
+                    decimal_mantissa: if is_negative {
+                        -decimal_mantissa
+                    } else {
+                        decimal_mantissa
+                    },
+                    decimal_places,
+                    floating_point: if is_negative {
+                        -floating_point
+                    } else {
+                        floating_point
+                    },
+                },
+                style: AmountStyle {
+                    commodity_side: side,
+                    spaced,
+                    precision: decimal_places,
+                    decimal_point,
+                    digit_groups: None,
+                },
+                price: None,
             })
-            .unwrap_or((Side::Right, ""));
-
-        // remove parsed commodity from string
-        let s = s.replace(commodity, "");
-
-        if s.is_empty() {
-            return Err(ParseAmountError::MissingAmount);
         }
-
-        // determine if commodity is spaced
-        let spaced = match side {
-            Side::Left => s.chars().next().unwrap().is_whitespace(),
-            Side::Right => s.chars().last().unwrap().is_whitespace(),
-        };
-
-        // remove spaces from string
-        let s = match side {
-            Side::Left => s.trim_start(),
-            Side::Right => s.trim_end(),
-        };
-
-        // maybe negative sign is before digit
-        let is_negative = if is_negative {
-            is_negative
-        } else {
-            s.starts_with('-')
-        };
-
-        // determine decimal point. it's either the last comma or the last dot
-        let decimal_point = s.chars().filter(|c| c.eq(&',') || c.eq(&'.')).last();
-
-        // precision is the number of digits after the decimal point
-        let decimal_places = decimal_point.map_or(0, |c| s.split(c).last().unwrap().len());
-
-        let decimal_mantissa = match decimal_point {
-            Some(d) => s
-                .chars()
-                .filter(|c| c.is_ascii_digit())
-                .take_while(|c| !c.eq(&d))
-                .collect::<String>(),
-            None => s.chars().filter(|c| c.is_ascii_digit()).collect::<String>(),
-        }
-        .parse::<i64>()
-        .map_err(|_| ParseAmountError::InvalidAmout(s.to_string()))?;
-
-        let floating_point = match decimal_point {
-            Some(d) => s
-                .chars()
-                .filter(|c| c.is_ascii_digit() || c.eq(&d))
-                .map(|c| if c.eq(&d) { '.' } else { c }) // replace decimal point with dot
-                .collect::<String>(),
-            None => s.chars().filter(|c| c.is_ascii_digit()).collect::<String>(),
-        }
-        .parse::<f64>()
-        .map_err(|_| ParseAmountError::InvalidAmout(s.to_string()))?;
-
-        Ok(Self {
-            commodity: commodity.replace('"', "").to_string(),
-            quantity: Quantity {
-                decimal_mantissa: if is_negative {
-                    -decimal_mantissa
-                } else {
-                    decimal_mantissa
-                },
-                decimal_places,
-                floating_point: if is_negative {
-                    -floating_point
-                } else {
-                    floating_point
-                },
-            },
-            style: AmountStyle {
-                commodity_side: side,
-                spaced,
-                precision: decimal_places,
-                decimal_point,
-                digit_groups: None,
-            },
-            price: None,
-        })
     }
 }
 
@@ -552,6 +570,74 @@ mod tests {
                         digit_groups: None,
                     },
                     price: None,
+                }),
+            ),
+            (
+                "1 SEK @ 1.2 USD",
+                Ok(Amount {
+                    commodity: "SEK".to_string(),
+                    quantity: Quantity {
+                        decimal_mantissa: 1,
+                        decimal_places: 0,
+                        floating_point: 1.0,
+                    },
+                    style: AmountStyle {
+                        commodity_side: Side::Right,
+                        spaced: true,
+                        precision: 0,
+                        decimal_point: None,
+                        digit_groups: None,
+                    },
+                    price: Some(Box::new(AmountPrice::UnitPrice(Amount {
+                        commodity: "USD".to_string(),
+                        quantity: Quantity {
+                            decimal_mantissa: 12,
+                            decimal_places: 1,
+                            floating_point: 1.2,
+                        },
+                        style: AmountStyle {
+                            commodity_side: Side::Right,
+                            spaced: true,
+                            precision: 1,
+                            decimal_point: Some('.'),
+                            digit_groups: None,
+                        },
+                        price: None,
+                    }))),
+                }),
+            ),
+            (
+                "1 SEK @@ 1.2 USD",
+                Ok(Amount {
+                    commodity: "SEK".to_string(),
+                    quantity: Quantity {
+                        decimal_mantissa: 1,
+                        decimal_places: 0,
+                        floating_point: 1.0,
+                    },
+                    style: AmountStyle {
+                        commodity_side: Side::Right,
+                        spaced: true,
+                        precision: 0,
+                        decimal_point: None,
+                        digit_groups: None,
+                    },
+                    price: Some(Box::new(AmountPrice::TotalPrice(Amount {
+                        commodity: "USD".to_string(),
+                        quantity: Quantity {
+                            decimal_mantissa: 12,
+                            decimal_places: 1,
+                            floating_point: 1.2,
+                        },
+                        style: AmountStyle {
+                            commodity_side: Side::Right,
+                            spaced: true,
+                            precision: 1,
+                            decimal_point: Some('.'),
+                            digit_groups: None,
+                        },
+                        price: None,
+                    }))),
                 }),
             ),
         ]

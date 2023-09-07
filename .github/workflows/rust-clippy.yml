@@ -34,12 +34,6 @@ jobs:
       - name: Install required cargo
         run: cargo install clippy-sarif sarif-fmt
 
-      - name: Install hledger
-        uses: ngalaiko/setup-hledger@v1
-
-      - name: Copy hledger-web binary
-        run: cp $(which hledger-web) ./binaries/hledger-web-$(rustc -Vv | grep host | cut -d' ' -f2-)
-
       - name: Run rust-clippy
         run: cargo clippy
           --all-features

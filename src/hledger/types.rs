@@ -1,7 +1,8 @@
-use std::{fmt, path, str::FromStr};
+use std::{fmt, ops, path, str::FromStr};
 
 use lazy_static::lazy_static;
 use regex::Regex;
+use rust_decimal::Decimal;
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Tag(String, String);
@@ -19,11 +20,71 @@ pub struct AccountDeclarationInfo {
 #[derive(Debug, Default, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Quantity {
     #[serde(rename = "decimalMantissa")]
-    pub decimal_mantissa: i64,
+    pub decimal_mantissa: i128,
     #[serde(rename = "decimalPlaces")]
     pub decimal_places: usize,
     #[serde(rename = "floatingPoint")]
     pub floating_point: f64,
+}
+
+impl From<Quantity> for Decimal {
+    fn from(value: Quantity) -> Self {
+        Decimal::new(value.decimal_mantissa as i64, value.decimal_places as u32)
+    }
+}
+
+impl From<Decimal> for Quantity {
+    fn from(value: Decimal) -> Self {
+        Quantity {
+            decimal_mantissa: value.mantissa(),
+            decimal_places: value.scale() as usize,
+            floating_point: value.to_string().parse().unwrap(),
+        }
+    }
+}
+
+impl ops::Add for Quantity {
+    type Output = Self;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        let self_decimal: Decimal = self.into();
+        let rhs_decimal: Decimal = rhs.into();
+        let result_decimal = self_decimal + rhs_decimal;
+        result_decimal.normalize().into()
+    }
+}
+
+impl ops::Sub for Quantity {
+    type Output = Self;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        let self_decimal: Decimal = self.into();
+        let rhs_decimal: Decimal = rhs.into();
+        let result_decimal = self_decimal - rhs_decimal;
+        result_decimal.normalize().into()
+    }
+}
+
+impl ops::Mul for Quantity {
+    type Output = Self;
+
+    fn mul(self, rhs: Self) -> Self::Output {
+        let self_decimal: Decimal = self.into();
+        let rhs_decimal: Decimal = rhs.into();
+        let result_decimal = self_decimal * rhs_decimal;
+        result_decimal.normalize().into()
+    }
+}
+
+impl ops::Div for Quantity {
+    type Output = Self;
+
+    fn div(self, rhs: Self) -> Self::Output {
+        let self_decimal: Decimal = self.into();
+        let rhs_decimal: Decimal = rhs.into();
+        let result_decimal = self_decimal / rhs_decimal;
+        result_decimal.normalize().into()
+    }
 }
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, serde::Serialize, serde::Deserialize)]
@@ -187,7 +248,7 @@ impl FromStr for Amount {
                     .collect::<String>(),
                 None => s.chars().filter(|c| c.is_ascii_digit()).collect::<String>(),
             }
-            .parse::<i64>()
+            .parse::<i128>()
             .map_err(|_| ParseAmountError::InvalidAmout(s.to_string()))?;
 
             let floating_point = match decimal_point {
@@ -236,7 +297,7 @@ impl fmt::Display for Amount {
 
         let integer_part = if let Some(groups) = &self.style.digit_groups {
             let mut integer_part = (decimal_mantissa
-                / 10i64.pow(self.quantity.decimal_places as u32))
+                / 10i128.pow(self.quantity.decimal_places as u32))
             .to_string()
             .chars()
             .rev()
@@ -260,11 +321,11 @@ impl fmt::Display for Amount {
             }
             result.into_iter().rev().collect::<String>()
         } else {
-            (decimal_mantissa / 10i64.pow(self.quantity.decimal_places as u32)).to_string()
+            (decimal_mantissa / 10i128.pow(self.quantity.decimal_places as u32)).to_string()
         };
 
         let fractional_part =
-            (decimal_mantissa % 10i64.pow(self.quantity.decimal_places as u32)).to_string();
+            (decimal_mantissa % 10i128.pow(self.quantity.decimal_places as u32)).to_string();
 
         let quantity = if self.quantity.decimal_places == 0 {
             format!("{}{}", if is_negative { "-" } else { "" }, integer_part)
@@ -301,6 +362,128 @@ impl fmt::Display for Amount {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_qualtity_operation() {
+        vec![
+            (
+                Quantity {
+                    decimal_mantissa: 1,
+                    decimal_places: 0,
+                    floating_point: 1.0,
+                } + Quantity {
+                    decimal_mantissa: 1,
+                    decimal_places: 0,
+                    floating_point: 1.0,
+                },
+                Quantity {
+                    decimal_mantissa: 2,
+                    decimal_places: 0,
+                    floating_point: 2.0,
+                },
+            ),
+            (
+                Quantity {
+                    decimal_mantissa: 1,
+                    decimal_places: 1,
+                    floating_point: 0.1,
+                } + Quantity {
+                    decimal_mantissa: 1,
+                    decimal_places: 0,
+                    floating_point: 1.0,
+                },
+                Quantity {
+                    decimal_mantissa: 11,
+                    decimal_places: 1,
+                    floating_point: 1.1,
+                },
+            ),
+            (
+                Quantity {
+                    decimal_mantissa: 1,
+                    decimal_places: 0,
+                    floating_point: 1.0,
+                } - Quantity {
+                    decimal_mantissa: 1,
+                    decimal_places: 1,
+                    floating_point: 0.1,
+                },
+                Quantity {
+                    decimal_mantissa: 9,
+                    decimal_places: 1,
+                    floating_point: 0.9,
+                },
+            ),
+            (
+                Quantity {
+                    decimal_mantissa: 1,
+                    decimal_places: 1,
+                    floating_point: 0.1,
+                } - Quantity {
+                    decimal_mantissa: 1,
+                    decimal_places: 0,
+                    floating_point: 1.0,
+                },
+                Quantity {
+                    decimal_mantissa: -9,
+                    decimal_places: 1,
+                    floating_point: -0.9,
+                },
+            ),
+            (
+                Quantity {
+                    decimal_mantissa: 1234,
+                    decimal_places: 3,
+                    floating_point: 1.234,
+                } * Quantity {
+                    decimal_mantissa: 456,
+                    decimal_places: 2,
+                    floating_point: 4.56,
+                },
+                Quantity {
+                    decimal_mantissa: 562704,
+                    decimal_places: 5,
+                    floating_point: 5.62704,
+                },
+            ),
+            (
+                Quantity {
+                    decimal_mantissa: 165,
+                    decimal_places: 1,
+                    floating_point: 16.5,
+                } / Quantity {
+                    decimal_mantissa: 15,
+                    decimal_places: 0,
+                    floating_point: 15.0,
+                },
+                Quantity {
+                    decimal_mantissa: 11,
+                    decimal_places: 1,
+                    floating_point: 1.1,
+                },
+            ),
+            (
+                Quantity {
+                    decimal_mantissa: 3,
+                    decimal_places: 0,
+                    floating_point: 3.0,
+                } / Quantity {
+                    decimal_mantissa: 2,
+                    decimal_places: 0,
+                    floating_point: 2.0,
+                },
+                Quantity {
+                    decimal_mantissa: 15,
+                    decimal_places: 1,
+                    floating_point: 1.5,
+                },
+            ),
+        ]
+        .iter()
+        .for_each(|(a, b)| {
+            assert_eq!(a, b);
+        });
+    }
 
     #[test]
     fn test_amount_parse() {

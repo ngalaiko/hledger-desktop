@@ -179,7 +179,7 @@ async fn spawn(
     ];
     handle
         .shell()
-        .command("hledger-we")
+        .command("hledger-web")
         .args(args)
         .spawn()
         .map_err(|err| match err {

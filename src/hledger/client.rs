@@ -11,6 +11,8 @@ pub enum Error {
     Process(#[from] process::Error),
     #[error("failed to send http request: {0}")]
     Http(#[from] reqwest::Error),
+    #[error("failed to parse json: {0}")]
+    Json(#[from] serde_json::Error),
 }
 
 #[derive(Debug, Clone)]
@@ -27,6 +29,10 @@ impl HLedgerWeb {
         Ok(Self {
             inner: Arc::new(inner),
         })
+    }
+
+    pub async fn prices(&self) -> Result<Vec<types::Price>, Error> {
+        self.inner.prices().await
     }
 
     pub async fn accounts(&self) -> Result<Vec<types::Account>, Error> {
@@ -61,6 +67,18 @@ impl HLedgerWebInner {
         })
     }
 
+    pub async fn prices(&self) -> Result<Vec<types::Price>, Error> {
+        let url = self
+            .process
+            .endpoint()
+            .join("/prices")
+            .expect("failed to join url");
+        let request = self.client.request(Method::GET, url);
+        let response = request.send().await.map_err(Error::Http)?;
+        let bytes = response.bytes().await.map_err(Error::Http)?;
+        serde_json::from_slice(&bytes).map_err(Error::Json)
+    }
+
     pub async fn accounts(&self) -> Result<Vec<types::Account>, Error> {
         let url = self
             .process
@@ -69,7 +87,8 @@ impl HLedgerWebInner {
             .expect("failed to join url");
         let request = self.client.request(Method::GET, url);
         let response = request.send().await.map_err(Error::Http)?;
-        response.json().await.map_err(Error::Http)
+        let bytes = response.bytes().await.map_err(Error::Http)?;
+        serde_json::from_slice(&bytes).map_err(Error::Json)
     }
 
     pub async fn transactions(&self) -> Result<Vec<types::Transaction>, Error> {
@@ -80,7 +99,8 @@ impl HLedgerWebInner {
             .expect("failed to join url");
         let request = self.client.request(Method::GET, url);
         let response = request.send().await.map_err(Error::Http)?;
-        response.json().await.map_err(Error::Http)
+        let bytes = response.bytes().await.map_err(Error::Http)?;
+        serde_json::from_slice(&bytes).map_err(Error::Json)
     }
 
     pub async fn add(&self, transaction: &types::Transaction) -> Result<(), Error> {

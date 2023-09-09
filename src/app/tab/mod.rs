@@ -1,4 +1,5 @@
 mod accounts_tree;
+mod converter;
 mod new_transaction_modal;
 mod transactions_list;
 

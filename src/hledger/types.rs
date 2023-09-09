@@ -2,7 +2,9 @@ use std::{fmt, ops, path, str::FromStr};
 
 use lazy_static::lazy_static;
 use regex::Regex;
-use rust_decimal::Decimal;
+use rust_decimal::{prelude::ToPrimitive, Decimal};
+use serde::ser::SerializeStruct;
+use serde_json::Value;
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Tag(String, String);
@@ -17,29 +19,48 @@ pub struct AccountDeclarationInfo {
     pub declaration_order: usize,
 }
 
-#[derive(Debug, Default, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
-pub struct Quantity {
-    #[serde(rename = "decimalMantissa")]
-    pub decimal_mantissa: i128,
-    #[serde(rename = "decimalPlaces")]
-    pub decimal_places: usize,
-    #[serde(rename = "floatingPoint")]
-    pub floating_point: f64,
+#[derive(Debug, Default, Clone, PartialEq)]
+pub struct Quantity(Decimal);
+
+impl serde::Serialize for Quantity {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        let mut state = serializer.serialize_struct("Quantity", 3)?;
+        state.serialize_field("decimalMantissa", &self.0.mantissa())?;
+        state.serialize_field("decimalPlaces", &self.0.scale())?;
+        state.serialize_field("floatingPoint", &self.0.to_f64().unwrap())?;
+        state.end()
+    }
+}
+
+impl<'d> serde::Deserialize<'d> for Quantity {
+    fn deserialize<D: serde::Deserializer<'d>>(deserializer: D) -> Result<Self, D::Error> {
+        let value: Value = serde::Deserialize::deserialize(deserializer)?;
+        let decimal_mantissa = value["decimalMantissa"]
+            .as_i64()
+            .ok_or_else(|| serde::de::Error::custom("decimalMantissa is not an integer"))?;
+        let decimal_places = value["decimalPlaces"]
+            .as_u64()
+            .ok_or_else(|| serde::de::Error::custom("decimalPlaces is not an integer"))?;
+        Ok(Quantity(Decimal::new(
+            decimal_mantissa,
+            decimal_places as u32,
+        )))
+    }
+}
+
+impl Quantity {
+    pub const ONE: Quantity = Quantity(Decimal::ONE);
 }
 
 impl From<Quantity> for Decimal {
     fn from(value: Quantity) -> Self {
-        Decimal::new(value.decimal_mantissa as i64, value.decimal_places as u32)
+        value.0
     }
 }
 
 impl From<Decimal> for Quantity {
     fn from(value: Decimal) -> Self {
-        Quantity {
-            decimal_mantissa: value.mantissa(),
-            decimal_places: value.scale() as usize,
-            floating_point: value.to_string().parse().unwrap(),
-        }
+        Quantity(value)
     }
 }
 
@@ -248,35 +269,16 @@ impl FromStr for Amount {
                     .collect::<String>(),
                 None => s.chars().filter(|c| c.is_ascii_digit()).collect::<String>(),
             }
-            .parse::<i128>()
-            .map_err(|_| ParseAmountError::InvalidAmout(s.to_string()))?;
-
-            let floating_point = match decimal_point {
-                Some(d) => s
-                    .chars()
-                    .filter(|c| c.is_ascii_digit() || c.eq(&d))
-                    .map(|c| if c.eq(&d) { '.' } else { c }) // replace decimal point with dot
-                    .collect::<String>(),
-                None => s.chars().filter(|c| c.is_ascii_digit()).collect::<String>(),
-            }
-            .parse::<f64>()
+            .parse::<i64>()
             .map_err(|_| ParseAmountError::InvalidAmout(s.to_string()))?;
 
             Ok(Self {
                 commodity: commodity.replace('"', "").to_string(),
-                quantity: Quantity {
-                    decimal_mantissa: if is_negative {
-                        -decimal_mantissa
-                    } else {
-                        decimal_mantissa
-                    },
-                    decimal_places,
-                    floating_point: if is_negative {
-                        -floating_point
-                    } else {
-                        floating_point
-                    },
-                },
+                quantity: Quantity(if is_negative {
+                    Decimal::new(-decimal_mantissa, decimal_places as u32)
+                } else {
+                    Decimal::new(decimal_mantissa, decimal_places as u32)
+                }),
                 style: AmountStyle {
                     commodity_side: side,
                     spaced,
@@ -292,14 +294,20 @@ impl FromStr for Amount {
 
 impl fmt::Display for Amount {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let is_negative = self.quantity.decimal_mantissa < 0;
-        let decimal_mantissa = self.quantity.decimal_mantissa.abs();
+        let is_negative = self.quantity.0.is_sign_negative();
+        let decimal_mantissa = self.quantity.0.abs().mantissa();
 
         let integer_part = if let Some(groups) = &self.style.digit_groups {
-            let mut integer_part = (decimal_mantissa
-                / 10i128.pow(self.quantity.decimal_places as u32))
-            .to_string()
-            .chars()
+            let integer_part = decimal_mantissa.to_string();
+            let mut integer_part = if integer_part.len() > self.quantity.0.scale() as usize {
+                integer_part
+                    .chars()
+                    .take(integer_part.len() - self.quantity.0.scale() as usize)
+                    .collect::<Vec<_>>()
+            } else {
+                integer_part.chars().collect::<Vec<_>>()
+            }
+            .into_iter()
             .rev()
             .collect::<String>();
 
@@ -321,13 +329,24 @@ impl fmt::Display for Amount {
             }
             result.into_iter().rev().collect::<String>()
         } else {
-            (decimal_mantissa / 10i128.pow(self.quantity.decimal_places as u32)).to_string()
+            let integer_part = decimal_mantissa.to_string();
+            if integer_part.len() > self.quantity.0.scale() as usize {
+                integer_part
+                    .chars()
+                    .take(integer_part.len() - self.quantity.0.scale() as usize)
+                    .collect::<String>()
+            } else {
+                integer_part
+            }
         };
 
-        let fractional_part =
-            (decimal_mantissa % 10i128.pow(self.quantity.decimal_places as u32)).to_string();
+        let fractional_part = decimal_mantissa
+            .to_string()
+            .chars()
+            .skip(integer_part.len())
+            .collect::<String>();
 
-        let quantity = if self.quantity.decimal_places == 0 {
+        let quantity = if self.quantity.0.scale() == 0 {
             format!("{}{}", if is_negative { "-" } else { "" }, integer_part)
         } else {
             format!(
@@ -336,7 +355,7 @@ impl fmt::Display for Amount {
                 integer_part,
                 self.style.decimal_point.unwrap_or('.'),
                 fractional_part,
-                width = self.quantity.decimal_places
+                width = self.quantity.0.scale() as usize
             )
         };
 
@@ -364,125 +383,12 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_qualtity_operation() {
-        vec![
-            (
-                Quantity {
-                    decimal_mantissa: 1,
-                    decimal_places: 0,
-                    floating_point: 1.0,
-                } + Quantity {
-                    decimal_mantissa: 1,
-                    decimal_places: 0,
-                    floating_point: 1.0,
-                },
-                Quantity {
-                    decimal_mantissa: 2,
-                    decimal_places: 0,
-                    floating_point: 2.0,
-                },
-            ),
-            (
-                Quantity {
-                    decimal_mantissa: 1,
-                    decimal_places: 1,
-                    floating_point: 0.1,
-                } + Quantity {
-                    decimal_mantissa: 1,
-                    decimal_places: 0,
-                    floating_point: 1.0,
-                },
-                Quantity {
-                    decimal_mantissa: 11,
-                    decimal_places: 1,
-                    floating_point: 1.1,
-                },
-            ),
-            (
-                Quantity {
-                    decimal_mantissa: 1,
-                    decimal_places: 0,
-                    floating_point: 1.0,
-                } - Quantity {
-                    decimal_mantissa: 1,
-                    decimal_places: 1,
-                    floating_point: 0.1,
-                },
-                Quantity {
-                    decimal_mantissa: 9,
-                    decimal_places: 1,
-                    floating_point: 0.9,
-                },
-            ),
-            (
-                Quantity {
-                    decimal_mantissa: 1,
-                    decimal_places: 1,
-                    floating_point: 0.1,
-                } - Quantity {
-                    decimal_mantissa: 1,
-                    decimal_places: 0,
-                    floating_point: 1.0,
-                },
-                Quantity {
-                    decimal_mantissa: -9,
-                    decimal_places: 1,
-                    floating_point: -0.9,
-                },
-            ),
-            (
-                Quantity {
-                    decimal_mantissa: 1234,
-                    decimal_places: 3,
-                    floating_point: 1.234,
-                } * Quantity {
-                    decimal_mantissa: 456,
-                    decimal_places: 2,
-                    floating_point: 4.56,
-                },
-                Quantity {
-                    decimal_mantissa: 562704,
-                    decimal_places: 5,
-                    floating_point: 5.62704,
-                },
-            ),
-            (
-                Quantity {
-                    decimal_mantissa: 165,
-                    decimal_places: 1,
-                    floating_point: 16.5,
-                } / Quantity {
-                    decimal_mantissa: 15,
-                    decimal_places: 0,
-                    floating_point: 15.0,
-                },
-                Quantity {
-                    decimal_mantissa: 11,
-                    decimal_places: 1,
-                    floating_point: 1.1,
-                },
-            ),
-            (
-                Quantity {
-                    decimal_mantissa: 3,
-                    decimal_places: 0,
-                    floating_point: 3.0,
-                } / Quantity {
-                    decimal_mantissa: 2,
-                    decimal_places: 0,
-                    floating_point: 2.0,
-                },
-                Quantity {
-                    decimal_mantissa: 15,
-                    decimal_places: 1,
-                    floating_point: 1.5,
-                },
-            ),
-        ]
-        .iter()
-        .for_each(|(a, b)| {
-            assert_eq!(a, b);
-        });
+    fn test_quantity_serde() {
+        let raw = r#"{"decimalMantissa":123456,"decimalPlaces":3,"floatingPoint":123.456}"#;
+        let quantity: Quantity = serde_json::from_str(raw).unwrap();
+        assert_eq!(quantity.0, Decimal::new(123456, 3));
+        let quantity = serde_json::to_string(&quantity).unwrap();
+        assert_eq!(quantity, raw);
     }
 
     #[test]
@@ -493,11 +399,7 @@ mod tests {
                 "1",
                 Ok(Amount {
                     commodity: "".to_string(),
-                    quantity: Quantity {
-                        decimal_mantissa: 1,
-                        decimal_places: 0,
-                        floating_point: 1.0,
-                    },
+                    quantity: Quantity(Decimal::new(1, 0)),
                     style: AmountStyle {
                         commodity_side: Side::Right,
                         spaced: false,
@@ -512,11 +414,7 @@ mod tests {
                 "$1",
                 Ok(Amount {
                     commodity: "$".to_string(),
-                    quantity: Quantity {
-                        decimal_mantissa: 1,
-                        decimal_places: 0,
-                        floating_point: 1.0,
-                    },
+                    quantity: Quantity(Decimal::new(1, 0)),
                     style: AmountStyle {
                         commodity_side: Side::Left,
                         spaced: false,
@@ -531,11 +429,7 @@ mod tests {
                 "4000 AAPL",
                 Ok(Amount {
                     commodity: "AAPL".to_string(),
-                    quantity: Quantity {
-                        decimal_mantissa: 4000,
-                        decimal_places: 0,
-                        floating_point: 4000.0,
-                    },
+                    quantity: Quantity(Decimal::new(4000, 0)),
                     style: AmountStyle {
                         commodity_side: Side::Right,
                         spaced: true,
@@ -550,11 +444,7 @@ mod tests {
                 "3 \"green apples\"",
                 Ok(Amount {
                     commodity: "green apples".to_string(),
-                    quantity: Quantity {
-                        decimal_mantissa: 3,
-                        decimal_places: 0,
-                        floating_point: 3.0,
-                    },
+                    quantity: Quantity(Decimal::new(3, 0)),
                     style: AmountStyle {
                         commodity_side: Side::Right,
                         spaced: true,
@@ -569,11 +459,7 @@ mod tests {
                 "-$1",
                 Ok(Amount {
                     commodity: "$".to_string(),
-                    quantity: Quantity {
-                        decimal_mantissa: -1,
-                        decimal_places: 0,
-                        floating_point: -1.0,
-                    },
+                    quantity: Quantity(Decimal::new(-1, 0)),
                     style: AmountStyle {
                         commodity_side: Side::Left,
                         spaced: false,
@@ -588,11 +474,7 @@ mod tests {
                 "$-1",
                 Ok(Amount {
                     commodity: "$".to_string(),
-                    quantity: Quantity {
-                        decimal_mantissa: -1,
-                        decimal_places: 0,
-                        floating_point: -1.0,
-                    },
+                    quantity: Quantity(Decimal::new(-1, 0)),
                     style: AmountStyle {
                         commodity_side: Side::Left,
                         spaced: false,
@@ -607,11 +489,7 @@ mod tests {
                 "+ $1",
                 Ok(Amount {
                     commodity: "$".to_string(),
-                    quantity: Quantity {
-                        decimal_mantissa: 1,
-                        decimal_places: 0,
-                        floating_point: 1.0,
-                    },
+                    quantity: Quantity(Decimal::new(1, 0)),
                     style: AmountStyle {
                         commodity_side: Side::Left,
                         spaced: false,
@@ -626,11 +504,7 @@ mod tests {
                 "$-      1",
                 Ok(Amount {
                     commodity: "$".to_string(),
-                    quantity: Quantity {
-                        decimal_mantissa: -1,
-                        decimal_places: 0,
-                        floating_point: -1.0,
-                    },
+                    quantity: Quantity(Decimal::new(-1, 0)),
                     style: AmountStyle {
                         commodity_side: Side::Left,
                         spaced: false,
@@ -645,11 +519,7 @@ mod tests {
                 "1.23",
                 Ok(Amount {
                     commodity: "".to_string(),
-                    quantity: Quantity {
-                        decimal_mantissa: 123,
-                        decimal_places: 2,
-                        floating_point: 1.23,
-                    },
+                    quantity: Quantity(Decimal::new(123, 2)),
                     style: AmountStyle {
                         commodity_side: Side::Right,
                         spaced: false,
@@ -664,11 +534,7 @@ mod tests {
                 "1,23456780000009",
                 Ok(Amount {
                     commodity: "".to_string(),
-                    quantity: Quantity {
-                        decimal_mantissa: 123456780000009,
-                        decimal_places: 14,
-                        floating_point: 1.23456780000009,
-                    },
+                    quantity: Quantity(Decimal::new(123456780000009, 14)),
                     style: AmountStyle {
                         commodity_side: Side::Right,
                         spaced: false,
@@ -683,11 +549,7 @@ mod tests {
                 "EUR 2.000.000,00",
                 Ok(Amount {
                     commodity: "EUR".to_string(),
-                    quantity: Quantity {
-                        decimal_mantissa: 200000000,
-                        decimal_places: 2,
-                        floating_point: 2000000.0,
-                    },
+                    quantity: Quantity(Decimal::new(200000000, 2)),
                     style: AmountStyle {
                         commodity_side: Side::Left,
                         spaced: true,
@@ -702,11 +564,7 @@ mod tests {
                 "INR 9,99,99,999.00",
                 Ok(Amount {
                     commodity: "INR".to_string(),
-                    quantity: Quantity {
-                        decimal_mantissa: 9999999900,
-                        decimal_places: 2,
-                        floating_point: 99999999.0,
-                    },
+                    quantity: Quantity(Decimal::new(9999999900, 2)),
                     style: AmountStyle {
                         commodity_side: Side::Left,
                         spaced: true,
@@ -721,11 +579,7 @@ mod tests {
                 "1 000 000.9455",
                 Ok(Amount {
                     commodity: "".to_string(),
-                    quantity: Quantity {
-                        decimal_mantissa: 10000009455,
-                        decimal_places: 4,
-                        floating_point: 1000000.9455,
-                    },
+                    quantity: Quantity(Decimal::new(10000009455, 4)),
                     style: AmountStyle {
                         commodity_side: Side::Right,
                         spaced: false,
@@ -740,11 +594,7 @@ mod tests {
                 "-2 \"Liquorice Wands\"",
                 Ok(Amount {
                     commodity: "Liquorice Wands".to_string(),
-                    quantity: Quantity {
-                        decimal_mantissa: -2,
-                        decimal_places: 0,
-                        floating_point: -2.0,
-                    },
+                    quantity: Quantity(Decimal::new(-2, 0)),
                     style: AmountStyle {
                         commodity_side: Side::Right,
                         spaced: true,
@@ -759,11 +609,7 @@ mod tests {
                 "1 SEK @ 1.2 USD",
                 Ok(Amount {
                     commodity: "SEK".to_string(),
-                    quantity: Quantity {
-                        decimal_mantissa: 1,
-                        decimal_places: 0,
-                        floating_point: 1.0,
-                    },
+                    quantity: Quantity(Decimal::new(1, 0)),
                     style: AmountStyle {
                         commodity_side: Side::Right,
                         spaced: true,
@@ -773,11 +619,7 @@ mod tests {
                     },
                     price: Some(Box::new(AmountPrice::UnitPrice(Amount {
                         commodity: "USD".to_string(),
-                        quantity: Quantity {
-                            decimal_mantissa: 12,
-                            decimal_places: 1,
-                            floating_point: 1.2,
-                        },
+                        quantity: Quantity(Decimal::new(12, 1)),
                         style: AmountStyle {
                             commodity_side: Side::Right,
                             spaced: true,
@@ -793,11 +635,7 @@ mod tests {
                 "1 SEK @@ 1.2 USD",
                 Ok(Amount {
                     commodity: "SEK".to_string(),
-                    quantity: Quantity {
-                        decimal_mantissa: 1,
-                        decimal_places: 0,
-                        floating_point: 1.0,
-                    },
+                    quantity: Quantity(Decimal::new(1, 0)),
                     style: AmountStyle {
                         commodity_side: Side::Right,
                         spaced: true,
@@ -807,11 +645,7 @@ mod tests {
                     },
                     price: Some(Box::new(AmountPrice::TotalPrice(Amount {
                         commodity: "USD".to_string(),
-                        quantity: Quantity {
-                            decimal_mantissa: 12,
-                            decimal_places: 1,
-                            floating_point: 1.2,
-                        },
+                        quantity: Quantity(Decimal::new(12, 1)),
                         style: AmountStyle {
                             commodity_side: Side::Right,
                             spaced: true,
@@ -836,11 +670,7 @@ mod tests {
             (
                 Amount {
                     commodity: "SEK".to_string(),
-                    quantity: Quantity {
-                        decimal_mantissa: 1200000,
-                        decimal_places: 2,
-                        floating_point: 12000.0,
-                    },
+                    quantity: Quantity(Decimal::new(1200000, 2)),
                     style: AmountStyle {
                         commodity_side: Side::Right,
                         spaced: true,
@@ -855,11 +685,7 @@ mod tests {
             (
                 Amount {
                     commodity: "SEK".to_string(),
-                    quantity: Quantity {
-                        decimal_mantissa: -100,
-                        decimal_places: 0,
-                        floating_point: -100.0,
-                    },
+                    quantity: Quantity(Decimal::new(-100, 0)),
                     style: AmountStyle {
                         commodity_side: Side::Right,
                         spaced: true,
@@ -874,11 +700,7 @@ mod tests {
             (
                 Amount {
                     commodity: "SEK".to_string(),
-                    quantity: Quantity {
-                        decimal_mantissa: -1200000,
-                        decimal_places: 2,
-                        floating_point: -12000.0,
-                    },
+                    quantity: Quantity(Decimal::new(-1200000, 2)),
                     style: AmountStyle {
                         commodity_side: Side::Right,
                         spaced: true,
@@ -893,11 +715,7 @@ mod tests {
             (
                 Amount {
                     commodity: "SEK".to_string(),
-                    quantity: Quantity {
-                        decimal_mantissa: -30000,
-                        decimal_places: 2,
-                        floating_point: -300.0,
-                    },
+                    quantity: Quantity(Decimal::new(-30000, 2)),
                     style: AmountStyle {
                         commodity_side: Side::Right,
                         spaced: true,

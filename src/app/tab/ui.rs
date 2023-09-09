@@ -1,12 +1,16 @@
+/// TODO: 
+/// * remember amount styles for each commodity
+/// * allow configuring valuation date for conversion
 use std::path;
 
 use poll_promise::Promise;
-use tauri_egui::egui::{Align, CentralPanel, Hyperlink, Layout, Response, SidePanel, Ui};
+use tauri_egui::egui::{Align, CentralPanel, ComboBox, Hyperlink, Layout, Response, SidePanel, Ui};
 
-use crate::hledger::{self, Manager};
+use crate::hledger::{self, Amount, Commodity, Manager, Posting, Transaction};
 
 use super::{
     accounts_tree::AccountsTree,
+    converter::Converter,
     new_transaction_modal::{NewTransactionModal, Suggestions},
     state::State,
     transactions_list,
@@ -20,6 +24,9 @@ pub struct Tab {
 
     client: Promise<Result<hledger::Client, hledger::Error>>,
     transactions: Option<Promise<Result<Vec<hledger::Transaction>, hledger::Error>>>,
+    commodities: Option<Vec<Commodity>>,
+    prices: Option<Promise<Result<Vec<hledger::Price>, hledger::Error>>>,
+    converter: Option<Converter>,
     visible_transactions: Option<Vec<hledger::Transaction>>,
     add_transaction_modal_suggestions: Option<Suggestions>,
 }
@@ -33,6 +40,9 @@ impl Tab {
                 async move { manager.client(file_path).await }
             }),
             transactions: None,
+            prices: None,
+            commodities: None,
+            converter: None,
             add_transaction_modal_suggestions: None,
             visible_transactions: None,
             accounts_tree: AccountsTree::new(manager, &file_path, &state.tree.clone()),
@@ -73,10 +83,10 @@ impl Tab {
                 .inner
             }
             Some(Ok(client)) => {
-                let tx_created = if let Some(tx) = self.visible_transactions.as_ref() {
+                let tx_created = if let Some(transactions) = self.visible_transactions.as_ref() {
                     let suggestions = self
                         .add_transaction_modal_suggestions
-                        .get_or_insert_with(|| Suggestions::from(tx.as_ref()));
+                        .get_or_insert_with(|| Suggestions::from(transactions.as_ref()));
                     self.add_transaction_modal.ui(ui, suggestions)
                 } else {
                     self.add_transaction_modal.ui(ui, &Suggestions::default())
@@ -98,61 +108,116 @@ impl Tab {
                     })
                 });
 
-                let accounts_response = SidePanel::left("accounts_tree")
-                    .show(ui.ctx(), |ui| {
-                        let response = self.accounts_tree.ui(ui);
-
-                        if response.changed() {
-                            self.state.tree = self.accounts_tree.state().clone();
-                            self.visible_transactions =
-                                transactions.ready().and_then(|transactions| {
-                                    transactions.as_ref().ok().map(|transactions| {
-                                        filter_visible(transactions.as_ref(), |account_name| {
-                                            self.state.tree.checked.contains(account_name)
-                                        })
-                                    })
-                                });
-                        }
-
-                        response
+                let prices = self.prices.get_or_insert_with(|| {
+                    Promise::spawn_async({
+                        let client = client.clone();
+                        async move { client.prices().await }
                     })
+                });
+
+                let mut accounts_response = SidePanel::left("accounts_tree")
+                    .show(ui.ctx(), |ui| self.accounts_tree.ui(ui))
                     .inner;
 
+                if accounts_response.changed() {
+                    self.state.tree = self.accounts_tree.state().clone();
+                    self.visible_transactions = None;
+                }
+
                 CentralPanel::default().show(ui.ctx(), |ui| {
-                    ui.vertical(|ui| {
-                        ui.with_layout(Layout::right_to_left(Align::Min), |ui| {
-                            if ui.button("add transaction").clicked() {
-                                self.add_transaction_modal.open();
-                            }
-                        });
-
-                        ui.separator();
-
-                        match transactions.ready() {
-                            None => {
-                                ui.vertical_centered(|ui| {
-                                    ui.ctx().request_repaint();
-                                    ui.spinner()
-                                });
-                            }
-                            Some(Err(err)) => {
-                                ui.vertical_centered(|ui| {
-                                    ui.heading("Failed to load transactions");
-                                    ui.label(err.to_string());
-                                });
-                            }
-                            Some(Ok(transactions)) => {
-                                let visible_transactions =
-                                    self.visible_transactions.get_or_insert_with(|| {
-                                        filter_visible(transactions, |account| {
-                                            self.state.tree.checked.contains(account)
-                                        })
-                                    });
-
-                                transactions_list::ui(ui, visible_transactions);
-                            }
+                    match (transactions.ready(), prices.ready()) {
+                        (None, _) | (_, None) => {
+                            ui.vertical_centered(|ui| {
+                                ui.ctx().request_repaint();
+                                ui.spinner()
+                            });
                         }
-                    });
+                        (Some(Err(err)), _) => {
+                            ui.vertical_centered(|ui| {
+                                ui.heading("Failed to load transactions");
+                                ui.label(err.to_string());
+                            });
+                        }
+                        (_, Some(Err(err))) => {
+                            ui.vertical_centered(|ui| {
+                                ui.heading("Failed to load prices");
+                                ui.label(err.to_string());
+                            });
+                        }
+                        (Some(Ok(transactions)), Some(Ok(prices))) => {
+                            let commodities = self.commodities.get_or_insert_with(|| {
+                                let mut commodities = transactions
+                                    .iter()
+                                    .flat_map(|tx| tx.postings.iter())
+                                    .flat_map(|posting| posting.amount.iter())
+                                    .map(|amount| amount.commodity.clone())
+                                    .collect::<Vec<_>>();
+                                commodities.sort();
+                                commodities.dedup();
+                                commodities
+                            });
+
+                            let mut display_commodity = self
+                                .state
+                                .display_commodity
+                                .as_ref()
+                                .map(|c| c.to_string())
+                                .unwrap_or("-".to_string());
+
+                            ui.with_layout(Layout::right_to_left(Align::Min), |ui| {
+                                if ui.button("add transaction").clicked() {
+                                    self.add_transaction_modal.open();
+                                }
+
+                                if self.state.display_commodity.is_some()
+                                    && ui.button("x").clicked()
+                                {
+                                    self.state.display_commodity = None;
+                                    self.visible_transactions = None;
+                                    accounts_response.mark_changed();
+                                }
+
+                                ComboBox::from_id_source("display commodity")
+                                    .selected_text(display_commodity.to_string())
+                                    .show_ui(ui, |ui| {
+                                        for commodity in commodities {
+                                            if ui
+                                                .selectable_value(
+                                                    &mut display_commodity,
+                                                    commodity.to_string(),
+                                                    commodity.to_string(),
+                                                )
+                                                .changed()
+                                            {
+                                                self.state.display_commodity =
+                                                    Some(commodity.to_string());
+                                                self.visible_transactions = None;
+                                                accounts_response.mark_changed();
+                                            }
+                                        }
+                                    });
+                            });
+
+                            ui.separator();
+
+                            let converter =
+                                self.converter.get_or_insert_with(|| Converter::new(prices));
+
+                            let visible_transactions =
+                                self.visible_transactions.get_or_insert_with(|| {
+                                    let transactions = filter_visible(transactions, |account| {
+                                        self.state.tree.checked.contains(account)
+                                    });
+                                    if let Some(commodity) = self.state.display_commodity.as_ref() {
+                                        convert_amounts(converter, &transactions, commodity)
+                                    } else {
+                                        transactions.to_vec()
+                                    }
+                                });
+
+                            transactions_list::ui(ui, visible_transactions);
+                        }
+                    }
                 });
 
                 accounts_response
@@ -182,6 +247,46 @@ fn filter_visible(
                     ..transaction.clone()
                 })
             }
+        })
+        .collect::<Vec<_>>()
+}
+
+fn convert_amounts(
+    converter: &Converter,
+    transactions: &[hledger::Transaction],
+    target: &Commodity,
+) -> Vec<hledger::Transaction> {
+    transactions
+        .iter()
+        .map(|transaction| Transaction {
+            postings: transaction
+                .postings
+                .iter()
+                .map(|posting| Posting {
+                    amount: posting
+                        .amount
+                        .iter()
+                        .map(|amount| {
+                            // TODO: try to use amount's price here
+                            if let Ok(quantity) = converter.convert(
+                                (&amount.quantity, &amount.commodity),
+                                target,
+                                &transaction.date,
+                            ) {
+                                Amount {
+                                    commodity: target.clone(),
+                                    quantity,
+                                    ..amount.clone()
+                                }
+                            } else {
+                                amount.clone()
+                            }
+                        })
+                        .collect::<Vec<_>>(),
+                    ..posting.clone()
+                })
+                .collect::<Vec<_>>(),
+            ..transaction.clone()
         })
         .collect::<Vec<_>>()
 }

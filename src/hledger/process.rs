@@ -8,6 +8,7 @@ use tauri_plugin_shell::{
 };
 use tokio::{select, sync::watch};
 use tokio_util::sync::CancellationToken;
+use tracing::instrument;
 use url::Url;
 
 #[derive(thiserror::Error, Debug, Clone)]
@@ -54,65 +55,54 @@ impl HLedgerWeb {
         let _handle: async_runtime::JoinHandle<Result<(), Error>> = tauri::async_runtime::spawn({
             let handle = handle.clone();
             let state_tx = state_tx.clone();
+            let span = tracing::span!(
+                tracing::Level::INFO,
+                "hledger-web",
+                file_path = file_path.display().to_string()
+            );
             async move {
+                let _span_guard = span.enter();
+
+                let send_state = |state: State| {
+                    tracing::info!(?state);
+                    state_tx.send(state).unwrap();
+                };
+
+                send_state(State::Starting);
                 match spawn(&handle, &file_path, &port).await {
                     Err(error) => {
-                        tracing::error!(
-                            "hledger-web ({}): failed to span: {}",
-                            file_path.display(),
-                            &error
-                        );
-                        state_tx.send(State::Stopped(Some(error.clone()))).unwrap();
+                        send_state(State::Stopped(Some(error.clone())));
                         Err(error)
                     }
                     Ok((mut rx, child)) => loop {
                         select! {
                             _ = c_cancel_token.cancelled() => {
                                 if child.kill().is_err() {
-                                    state_tx.send(State::Stopped(Some(Error::FailedToStop))).unwrap();
+                                    send_state(State::Stopped(Some(Error::FailedToStop)));
                                     return Err(Error::FailedToStop);
                                 } else {
-                                    tracing::info!("hledger-web ({}): stopped", file_path.display());
-                                    state_tx.send(State::Stopped(None)).unwrap();
+                                    send_state(State::Stopped(None));
                                     return Ok(());
                                 }
                             }
                             Some(event) = rx.recv() =>  match event {
                                 CommandEvent::Stdout(line) => {
                                     let line = str::from_utf8(&line).unwrap();
-                                    tracing::trace!(
-                                        "hledger-web({}): {}",
-                                        file_path.display(),
-                                        line
-                                    );
+                                    tracing::debug!(line);
                                     if line.eq("Press ctrl-c to quit") {
-                                        tracing::info!("hledger-web({}): started", file_path.display());
-                                        state_tx.send(State::Running).unwrap();
+                                        send_state(State::Running);
                                     }
                                 }
                                 CommandEvent::Stderr(line) => {
                                     let line = str::from_utf8(&line).unwrap();
-                                    tracing::error!(
-                                        "hledger-web({}): {}",
-                                        file_path.display(),
-                                        line
-                                    );
+                                    tracing::error!(line);
                                 }
                                 CommandEvent::Error(error) => {
-                                    tracing::error!(
-                                        "hledger-web({}): {}",
-                                        file_path.display(),
-                                        error
-                                    );
-                                    state_tx.send(State::Stopped(Some(Error::CommandEvent(error.clone())))).unwrap();
+                                    send_state(State::Stopped(Some(Error::CommandEvent(error.clone()))));
                                     return Err(Error::CommandEvent(error));
                                 }
                                 CommandEvent::Terminated(payload) => {
-                                    tracing::error!(
-                                        "hledger-web({}): terminated",
-                                        file_path.display()
-                                    );
-                                    state_tx.send(State::Stopped(Some(Error::Terminated(payload.clone())))).unwrap();
+                                    send_state(State::Stopped(Some(Error::Terminated(payload.clone()))));
                                     return Err(Error::Terminated(payload));
                                 }
                                 _ => {}
@@ -163,6 +153,7 @@ impl Drop for HLedgerWeb {
     }
 }
 
+#[instrument(skip(handle, path))]
 async fn spawn(
     handle: &AppHandle,
     path: &path::Path,

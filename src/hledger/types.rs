@@ -9,7 +9,7 @@ use serde_json::Value;
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Tag(String, String);
 
-#[derive(Debug, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct AccountDeclarationInfo {
     #[serde(rename = "adicomment")]
     pub comment: String,
@@ -745,11 +745,31 @@ impl AccountName {
         self.0.split(':').last().unwrap()
     }
 
-    pub fn depth(&self) -> usize {
-        if self.0.is_empty() {
-            0
+    pub fn is_parent_of(&self, other: &AccountName) -> bool {
+        other.0.starts_with(&self.0)
+    }
+
+    pub fn parents(&self) -> Vec<Self> {
+        self.parent()
+            .map(|parent| {
+                let mut parents = parent.parents();
+                parents.push(parent);
+                parents
+            })
+            .unwrap_or_default()
+    }
+
+    pub fn parent(&self) -> Option<Self> {
+        if !self.0.contains(':') {
+            None
         } else {
-            self.0.split(':').count()
+            Some(Self(
+                self.0
+                    .split(':')
+                    .take(self.0.split(':').count() - 1)
+                    .collect::<Vec<_>>()
+                    .join(":"),
+            ))
         }
     }
 }
@@ -777,7 +797,7 @@ impl fmt::Display for AccountName {
     }
 }
 
-#[derive(Debug, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Account {
     #[serde(rename = "aname")]
     pub name: AccountName,
@@ -892,7 +912,7 @@ pub struct Posting {
     pub original: Option<Box<Posting>>,
 }
 
-#[derive(Debug, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Price {
     #[serde(rename = "mpdate")]
     pub date: chrono::NaiveDate,

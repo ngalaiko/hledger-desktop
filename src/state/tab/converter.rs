@@ -6,9 +6,10 @@ use chrono::NaiveDate;
 
 use crate::hledger::{Commodity, Price, Quantity};
 
-#[derive(Debug)]
+#[derive(Clone)]
 struct DateRate(NaiveDate, Quantity);
 
+#[derive(Clone)]
 pub struct Converter {
     from_to_rates: HashMap<Commodity, HashMap<Commodity, Vec<DateRate>>>,
 }

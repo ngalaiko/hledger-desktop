@@ -13,14 +13,16 @@ pub struct Manager {
     clients: Arc<Mutex<HashMap<String, Client>>>,
 }
 
-impl Manager {
-    pub fn new(handle: &AppHandle) -> Self {
+impl From<&AppHandle> for Manager {
+    fn from(value: &AppHandle) -> Self {
         Self {
-            handle: handle.clone(),
+            handle: value.clone(),
             clients: Arc::new(Mutex::new(HashMap::new())),
         }
     }
+}
 
+impl Manager {
     pub async fn client<P: AsRef<path::Path>>(&self, path: P) -> Result<Client, Error> {
         let path = path.as_ref().display().to_string();
         let mut clients = self.clients.lock().await;

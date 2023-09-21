@@ -1,13 +1,20 @@
 mod app;
 mod hledger;
+mod state;
+mod ui;
 mod widgets;
 
 use tauri::Manager;
 
 use app::App;
 
-fn main() {
-    tracing_subscriber::fmt::init();
+use tracing::{metadata::LevelFilter, subscriber::set_global_default};
+use tracing_subscriber::{fmt::format::FmtSpan, layer::SubscriberExt, Layer};
+
+#[tokio::main]
+async fn main() {
+    tauri::async_runtime::set(tokio::runtime::Handle::current());
+    init_logs();
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .setup(|app| {
@@ -20,6 +27,10 @@ fn main() {
             };
 
             let handle = app.handle().clone();
+
+            let manager = hledger::Manager::from(&handle);
+            app.manage(manager);
+
             app.state::<tauri_egui::EguiPluginHandle>()
                 .create_window(
                     "main".to_string(),
@@ -34,4 +45,26 @@ fn main() {
         .build(tauri::generate_context!())
         .expect("error while running tauri application")
         .run(|_app, _event| {});
+}
+
+fn init_logs() {
+    set_global_default(
+        tracing_subscriber::registry().with(
+            tracing_subscriber::fmt::layer()
+                .event_format(
+                    tracing_subscriber::fmt::format()
+                        .with_file(true)
+                        .with_line_number(true)
+                        .with_target(false)
+                        .compact(),
+                )
+                .with_span_events(FmtSpan::CLOSE)
+                .with_filter(if cfg!(debug) {
+                    LevelFilter::DEBUG
+                } else {
+                    LevelFilter::INFO
+                }),
+        ),
+    )
+    .expect("failed to set global logs subscriber");
 }

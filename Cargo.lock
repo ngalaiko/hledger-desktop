@@ -893,6 +893,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "egui-phosphor"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c20b33023d92696a165857bcb3d87a698894b0d8d04f9383fd890b945ba0b23f"
+dependencies = [
+ "egui",
+]
+
+[[package]]
 name = "egui-tao"
 version = "0.23.0"
 source = "git+https://github.com/tauri-apps/egui?branch=0.21#97efd554bf12e948ac8e51240fd6f177b3d87bb3"
@@ -1694,6 +1703,7 @@ version = "0.0.1"
 dependencies = [
  "chrono",
  "egui-modal",
+ "egui-phosphor",
  "egui_autocomplete",
  "egui_extras",
  "futures",

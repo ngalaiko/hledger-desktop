@@ -311,10 +311,11 @@ impl Update {
     }
 
     pub fn reload_transactions() -> Self {
-        Update::Ephemeral(Box::new(move|_, tab_state| {
+        Update::Ephemeral(Box::new(move |_, tab_state| {
             tab_state.transactions = None;
             tab_state.display_transactions = None;
-        })).and_then(Update::load_transactions())
+        }))
+        .and_then(Update::load_transactions())
     }
 
     pub fn load_transactions() -> Self {

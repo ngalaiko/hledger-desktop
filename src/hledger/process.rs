@@ -168,19 +168,24 @@ async fn spawn(
         port.to_string(),
         "--serve-api".to_string(),
     ];
+
     handle
         .shell()
         .command("hledger-web")
         .args(args)
         .spawn()
-        .map_err(|err| match err {
-            tauri_plugin_shell::Error::Io(err) => {
-                if err.kind() == io::ErrorKind::NotFound {
+        .map_err(|error| match error {
+            tauri_plugin_shell::Error::Io(error) => {
+                if error.kind() == io::ErrorKind::NotFound {
                     Error::NotFound
                 } else {
+                    tracing::error!(?error);
                     Error::FailedToSpawn
                 }
             }
-            _ => Error::FailedToSpawn,
+            error => {
+                tracing::error!(?error);
+                Error::FailedToSpawn
+            }
         })
 }

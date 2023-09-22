@@ -171,7 +171,8 @@ async fn spawn(
 
     handle
         .shell()
-        .command("hledger-web")
+        .sidecar("hledger-web")
+        .expect("sidecar is always present")
         .args(args)
         .spawn()
         .map_err(|error| match error {

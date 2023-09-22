@@ -6,6 +6,7 @@
   "tauri": {
     "bundle": {
       "active": true,
+      "externalBin": ["binaries/hledger-web"],
       "targets": ["app", "dmg"],
       "icon": [
         "icons/32x32.png",
@@ -16,6 +17,17 @@
       ],
       "identifier": "rocks.galaiko.hledger.desktop",
       "category": "Finance"
+    }
+  },
+  "plugins": {
+    "shell": {
+      "scope": [
+        {
+          "name": "binaries/hledger-web",
+          "sidecar": true,
+          "args": true
+        }
+      ]
     }
   }
 }

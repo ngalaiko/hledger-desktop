@@ -1,4 +1,5 @@
 pub mod tab;
+mod update;
 
 use std::{fs, path};
 
@@ -6,6 +7,8 @@ use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Manager};
 use tauri_egui::egui::{util::History, Context};
 use tracing::instrument;
+
+use update::StateUpdate;
 
 #[derive(Default, Serialize, Deserialize)]
 pub struct State {
@@ -184,10 +187,7 @@ pub enum Theme {
     Light,
 }
 
-pub enum Update {
-    Persistent(Box<dyn Fn(&AppHandle, &mut State)>),
-    Ephemeral(Box<dyn Fn(&AppHandle, &mut State)>),
-}
+pub type Update = StateUpdate<State>;
 
 impl Update {
     pub fn set_theme(theme: &Theme) -> Self {

@@ -2,9 +2,9 @@ use std::{collections::HashSet, path};
 
 use chrono::{Local, NaiveDate};
 use poll_promise::Promise;
-use tauri::{AppHandle, Manager};
+use tauri::Manager;
 
-use crate::hledger;
+use crate::{hledger, state::update::StateUpdate};
 
 pub struct State {
     creating: Option<Promise<Result<(), hledger::Error>>>,
@@ -124,9 +124,7 @@ impl PostingState {
     }
 }
 
-pub enum Update {
-    Ephemeral(Box<dyn Fn(&AppHandle, &mut State)>),
-}
+pub type Update = StateUpdate<State>;
 
 impl Update {
     pub fn set_date(date: &NaiveDate) -> Self {
@@ -221,19 +219,6 @@ impl Update {
                 state.postings.push(PostingState::default())
             }
         }))
-    }
-}
-
-impl Update {
-    fn and_then(self, other: Self) -> Self {
-        match (self, other) {
-            (Self::Ephemeral(f), Self::Ephemeral(g)) => {
-                Self::Ephemeral(Box::new(move |handle, s| {
-                    f(handle, s);
-                    g(handle, s);
-                }))
-            }
-        }
     }
 }
 

@@ -6,7 +6,7 @@ use std::{collections::HashSet, path};
 use futures::FutureExt;
 use poll_promise::Promise;
 use serde::{Deserialize, Serialize};
-use tauri::{AppHandle, Manager};
+use tauri::Manager;
 
 use crate::{
     hledger::{self, AccountName, Commodity, Transaction},
@@ -14,6 +14,8 @@ use crate::{
 };
 
 use converter::Converter;
+
+use super::update::StateUpdate;
 
 #[derive(Default, Serialize, Deserialize)]
 pub struct State {
@@ -182,16 +184,22 @@ impl AccountTreeNode {
     }
 }
 
-pub enum Update {
-    Persistent(Box<dyn Fn(&AppHandle, &mut State)>),
-    Ephemeral(Box<dyn Fn(&AppHandle, &mut State)>),
-}
+pub type Update = StateUpdate<State>;
 
 impl From<new_transaction::Update> for Update {
     fn from(value: new_transaction::Update) -> Self {
         match value {
             new_transaction::Update::Ephemeral(update) => {
                 Update::Ephemeral(Box::new(move |handle, tab_state| {
+                    if let Some(ref mut new_transaction_modal_state) =
+                        tab_state.new_transaction_modal_state
+                    {
+                        update(handle, new_transaction_modal_state);
+                    }
+                }))
+            }
+            new_transaction::Update::Persistent(update) => {
+                Update::Persistent(Box::new(move |handle, tab_state| {
                     if let Some(ref mut new_transaction_modal_state) =
                         tab_state.new_transaction_modal_state
                     {
@@ -477,37 +485,6 @@ impl Update {
                 tab_state.accounts_tree = Some(Promise::from_ready(Ok(trees)));
             }
         }))
-    }
-}
-
-impl Update {
-    pub fn and_then(self, other: Update) -> Update {
-        match (self, other) {
-            (Update::Persistent(f1), Update::Persistent(f2)) => {
-                Update::Persistent(Box::new(move |handle, state| {
-                    f1(handle, state);
-                    f2(handle, state);
-                }))
-            }
-            (Update::Persistent(f1), Update::Ephemeral(f2)) => {
-                Update::Persistent(Box::new(move |handle, state| {
-                    f1(handle, state);
-                    f2(handle, state);
-                }))
-            }
-            (Update::Ephemeral(f1), Update::Persistent(f2)) => {
-                Update::Persistent(Box::new(move |handle, state| {
-                    f1(handle, state);
-                    f2(handle, state);
-                }))
-            }
-            (Update::Ephemeral(f1), Update::Ephemeral(f2)) => {
-                Update::Ephemeral(Box::new(move |handle, state| {
-                    f1(handle, state);
-                    f2(handle, state);
-                }))
-            }
-        }
     }
 }
 

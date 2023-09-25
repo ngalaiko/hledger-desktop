@@ -166,7 +166,7 @@ pub struct Amount {
     #[serde(rename = "astyle")]
     pub style: AmountStyle,
     #[serde(rename = "aprice")]
-    pub price: Option<Box<AmountPrice>>,
+    pub price: Box<Option<AmountPrice>>,
 }
 
 lazy_static! {
@@ -194,7 +194,7 @@ impl FromStr for Amount {
                 .map(Self::from_str)
                 .collect::<Result<Vec<_>, _>>()
                 .map(|parsed| Amount {
-                    price: Some(Box::new(AmountPrice::TotalPrice(parsed[1].clone()))),
+                    price: Box::new(Some(AmountPrice::TotalPrice(parsed[1].clone()))),
                     ..parsed[0].clone()
                 })
         } else if s.contains('@') {
@@ -202,7 +202,7 @@ impl FromStr for Amount {
                 .map(Self::from_str)
                 .collect::<Result<Vec<_>, _>>()
                 .map(|parsed| Amount {
-                    price: Some(Box::new(AmountPrice::UnitPrice(parsed[1].clone()))),
+                    price: Box::new(Some(AmountPrice::UnitPrice(parsed[1].clone()))),
                     ..parsed[0].clone()
                 })
         } else {
@@ -286,7 +286,7 @@ impl FromStr for Amount {
                     decimal_point,
                     digit_groups: None,
                 },
-                price: None,
+                price: Box::new(None),
             })
         }
     }
@@ -295,21 +295,18 @@ impl FromStr for Amount {
 impl fmt::Display for Amount {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let is_negative = self.quantity.0.is_sign_negative();
-        let decimal_mantissa = self.quantity.0.abs().mantissa();
 
         let integer_part = if let Some(groups) = &self.style.digit_groups {
-            let integer_part = decimal_mantissa.to_string();
-            let mut integer_part = if integer_part.len() > self.quantity.0.scale() as usize {
-                integer_part
-                    .chars()
-                    .take(integer_part.len() - self.quantity.0.scale() as usize)
-                    .collect::<Vec<_>>()
-            } else {
-                integer_part.chars().collect::<Vec<_>>()
-            }
-            .into_iter()
-            .rev()
-            .collect::<String>();
+            let mut integer_part = self
+                .quantity
+                .0
+                .trunc()
+                .abs()
+                .mantissa()
+                .to_string()
+                .chars()
+                .rev()
+                .collect::<String>();
 
             let mut result: Vec<char> = vec![];
             let mut groups_iter = groups.clone();
@@ -329,24 +326,19 @@ impl fmt::Display for Amount {
             }
             result.into_iter().rev().collect::<String>()
         } else {
-            let integer_part = decimal_mantissa.to_string();
-            if integer_part.len() > self.quantity.0.scale() as usize {
-                integer_part
-                    .chars()
-                    .take(integer_part.len() - self.quantity.0.scale() as usize)
-                    .collect::<String>()
-            } else {
-                integer_part
-            }
+            self.quantity.0.trunc().abs().mantissa().to_string()
         };
 
-        let fractional_part = decimal_mantissa
-            .to_string()
-            .chars()
-            .skip(integer_part.len())
-            .collect::<String>();
+        let fractional_part = self
+            .quantity
+            .0
+            .round_dp(self.style.precision.try_into().unwrap())
+            .fract()
+            .abs()
+            .mantissa()
+            .to_string();
 
-        let quantity = if self.quantity.0.scale() == 0 {
+        let quantity = if self.style.precision == 0 {
             format!("{}{}", if is_negative { "-" } else { "" }, integer_part)
         } else {
             format!(
@@ -355,7 +347,7 @@ impl fmt::Display for Amount {
                 integer_part,
                 self.style.decimal_point.unwrap_or('.'),
                 fractional_part,
-                width = self.quantity.0.scale() as usize
+                width = self.style.precision
             )
         };
 
@@ -407,7 +399,7 @@ mod tests {
                         decimal_point: None,
                         digit_groups: None,
                     },
-                    price: None,
+                    price: Box::new(None),
                 }),
             ),
             (
@@ -422,7 +414,7 @@ mod tests {
                         decimal_point: None,
                         digit_groups: None,
                     },
-                    price: None,
+                    price: Box::new(None),
                 }),
             ),
             (
@@ -437,7 +429,7 @@ mod tests {
                         decimal_point: None,
                         digit_groups: None,
                     },
-                    price: None,
+                    price: Box::new(None),
                 }),
             ),
             (
@@ -452,7 +444,7 @@ mod tests {
                         decimal_point: None,
                         digit_groups: None,
                     },
-                    price: None,
+                    price: Box::new(None),
                 }),
             ),
             (
@@ -467,7 +459,7 @@ mod tests {
                         decimal_point: None,
                         digit_groups: None,
                     },
-                    price: None,
+                    price: Box::new(None),
                 }),
             ),
             (
@@ -482,7 +474,7 @@ mod tests {
                         decimal_point: None,
                         digit_groups: None,
                     },
-                    price: None,
+                    price: Box::new(None),
                 }),
             ),
             (
@@ -497,7 +489,7 @@ mod tests {
                         decimal_point: None,
                         digit_groups: None,
                     },
-                    price: None,
+                    price: Box::new(None),
                 }),
             ),
             (
@@ -512,7 +504,7 @@ mod tests {
                         decimal_point: None,
                         digit_groups: None,
                     },
-                    price: None,
+                    price: Box::new(None),
                 }),
             ),
             (
@@ -527,7 +519,7 @@ mod tests {
                         decimal_point: Some('.'),
                         digit_groups: None,
                     },
-                    price: None,
+                    price: Box::new(None),
                 }),
             ),
             (
@@ -542,7 +534,7 @@ mod tests {
                         decimal_point: Some(','),
                         digit_groups: None,
                     },
-                    price: None,
+                    price: Box::new(None),
                 }),
             ),
             (
@@ -557,7 +549,7 @@ mod tests {
                         decimal_point: Some(','),
                         digit_groups: None,
                     },
-                    price: None,
+                    price: Box::new(None),
                 }),
             ),
             (
@@ -572,7 +564,7 @@ mod tests {
                         decimal_point: Some('.'),
                         digit_groups: None,
                     },
-                    price: None,
+                    price: Box::new(None),
                 }),
             ),
             (
@@ -587,7 +579,7 @@ mod tests {
                         decimal_point: Some('.'),
                         digit_groups: None,
                     },
-                    price: None,
+                    price: Box::new(None),
                 }),
             ),
             (
@@ -602,7 +594,7 @@ mod tests {
                         decimal_point: None,
                         digit_groups: None,
                     },
-                    price: None,
+                    price: Box::new(None),
                 }),
             ),
             (
@@ -617,7 +609,7 @@ mod tests {
                         decimal_point: None,
                         digit_groups: None,
                     },
-                    price: Some(Box::new(AmountPrice::UnitPrice(Amount {
+                    price: Box::new(Some(AmountPrice::UnitPrice(Amount {
                         commodity: "USD".to_string(),
                         quantity: Quantity(Decimal::new(12, 1)),
                         style: AmountStyle {
@@ -627,7 +619,7 @@ mod tests {
                             decimal_point: Some('.'),
                             digit_groups: None,
                         },
-                        price: None,
+                        price: Box::new(None),
                     }))),
                 }),
             ),
@@ -643,7 +635,7 @@ mod tests {
                         decimal_point: None,
                         digit_groups: None,
                     },
-                    price: Some(Box::new(AmountPrice::TotalPrice(Amount {
+                    price: Box::new(Some(AmountPrice::TotalPrice(Amount {
                         commodity: "USD".to_string(),
                         quantity: Quantity(Decimal::new(12, 1)),
                         style: AmountStyle {
@@ -653,7 +645,7 @@ mod tests {
                             decimal_point: Some('.'),
                             digit_groups: None,
                         },
-                        price: None,
+                        price: Box::new(None),
                     }))),
                 }),
             ),
@@ -678,7 +670,7 @@ mod tests {
                         decimal_point: Some('.'),
                         digit_groups: Some(DigitGroupStyle((',', vec![3]))),
                     },
-                    price: None,
+                    price: Box::new(None),
                 },
                 "12,000.00 SEK",
             ),
@@ -693,7 +685,7 @@ mod tests {
                         decimal_point: None,
                         digit_groups: None,
                     },
-                    price: None,
+                    price: Box::new(None),
                 },
                 "-100 SEK",
             ),
@@ -708,7 +700,7 @@ mod tests {
                         decimal_point: Some('.'),
                         digit_groups: Some(DigitGroupStyle((',', vec![3]))),
                     },
-                    price: None,
+                    price: Box::new(None),
                 },
                 "-12,000.00 SEK",
             ),
@@ -723,9 +715,39 @@ mod tests {
                         decimal_point: Some('.'),
                         digit_groups: Some(DigitGroupStyle((',', vec![3]))),
                     },
-                    price: None,
+                    price: Box::new(None),
                 },
                 "-300.00 SEK",
+            ),
+            (
+                Amount {
+                    commodity: "SEK".to_string(),
+                    quantity: Quantity(Decimal::new(-123456, 4)),
+                    style: AmountStyle {
+                        commodity_side: Side::Right,
+                        spaced: true,
+                        precision: 2,
+                        decimal_point: Some('.'),
+                        digit_groups: Some(DigitGroupStyle((',', vec![3]))),
+                    },
+                    price: Box::new(None),
+                },
+                "-12.35 SEK",
+            ),
+            (
+                Amount {
+                    commodity: "SEK".to_string(),
+                    quantity: Quantity(Decimal::new(-12, 0)),
+                    style: AmountStyle {
+                        commodity_side: Side::Right,
+                        spaced: true,
+                        precision: 2,
+                        decimal_point: Some('.'),
+                        digit_groups: Some(DigitGroupStyle((',', vec![3]))),
+                    },
+                    price: Box::new(None),
+                },
+                "-12.00 SEK",
             ),
         ]
         .into_iter()

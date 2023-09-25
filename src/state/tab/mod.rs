@@ -1,4 +1,3 @@
-mod converter;
 pub mod new_transaction;
 
 use std::{collections::HashSet, path};
@@ -7,13 +6,13 @@ use futures::FutureExt;
 use poll_promise::Promise;
 use serde::{Deserialize, Serialize};
 use tauri::Manager;
+use tokio::join;
 
 use crate::{
+    converter::Converter,
     hledger::{self, AccountName, Commodity, Transaction},
     widgets::CheckboxState,
 };
-
-use converter::Converter;
 
 use super::update::StateUpdate;
 
@@ -358,9 +357,12 @@ impl Update {
             tab_state.transactions = Some(Promise::spawn_async(load_transactions_future.clone()));
 
             let load_converter_future = {
+                let load_transactions_future = load_transactions_future.clone();
                 async move {
-                    let prices = load_prices_future.await?;
-                    let converter = Converter::new(&prices);
+                    let (prices, transactions) =
+                        join!(load_prices_future, load_transactions_future);
+                    let (prices, transactions) = (prices?, transactions?);
+                    let converter = Converter::new(&prices, &transactions);
                     Ok(converter)
                 }
             }
@@ -371,8 +373,9 @@ impl Update {
                 let unchecked_accounts = tab_state.unchecked_accounts.clone();
                 let display_commodity = tab_state.display_commodity.clone();
                 async move {
-                    let converter = load_converter_future.await?;
-                    let transactions = load_transactions_future.await?;
+                    let (converter, transactions) =
+                        join!(load_converter_future, load_transactions_future);
+                    let (converter, transactions) = (converter?, transactions?);
                     let transactions = transactions
                         .iter()
                         .filter_map(|transaction| {
@@ -513,19 +516,9 @@ fn to_display_transaction(
                     display_commotidy
                         .map(|display_commotidy| {
                             // TODO: try to use amount's price here
-                            if let Ok(quantity) = converter.convert(
-                                (&amount.quantity, &amount.commodity),
-                                display_commotidy,
-                                &transaction.date,
-                            ) {
-                                hledger::Amount {
-                                    commodity: display_commotidy.clone(),
-                                    quantity,
-                                    ..amount.clone()
-                                }
-                            } else {
-                                amount.clone()
-                            }
+                            converter
+                                .convert(amount, display_commotidy, &transaction.date)
+                                .unwrap_or_else(|_| amount.clone())
                         })
                         .unwrap_or_else(|| amount.clone())
                 })

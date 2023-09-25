@@ -4,14 +4,15 @@ use std::collections::HashMap;
 
 use chrono::NaiveDate;
 
-use crate::hledger::{Commodity, Price, Quantity};
+use crate::hledger::{Amount, AmountPrice, AmountStyle, Commodity, Price, Quantity, Transaction};
 
 #[derive(Clone)]
 struct DateRate(NaiveDate, Quantity);
 
 #[derive(Clone)]
 pub struct Converter {
-    from_to_rates: HashMap<Commodity, HashMap<Commodity, Vec<DateRate>>>,
+    rates: HashMap<Commodity, HashMap<Commodity, Vec<DateRate>>>,
+    styles: HashMap<Commodity, AmountStyle>,
 }
 
 #[derive(Debug, thiserror::Error, PartialEq)]
@@ -21,9 +22,26 @@ pub enum Error {
 }
 
 impl Converter {
-    pub fn new(prices: &[Price]) -> Self {
+    pub fn new(prices: &[Price], transactions: &[Transaction]) -> Self {
         Self {
-            from_to_rates: prices.iter().fold(HashMap::new(), |mut rates, price| {
+            styles: transactions
+                .iter()
+                .flat_map(|tx| tx.postings.iter())
+                .flat_map(|posting| posting.amount.iter())
+                .fold(HashMap::new(), |mut styles, amount| {
+                    match amount.price.as_ref() {
+                        Some(AmountPrice::TotalPrice(price))
+                        | Some(AmountPrice::UnitPrice(price)) => {
+                            styles.insert(amount.commodity.clone(), price.style.clone());
+                        }
+                        None => {}
+                    };
+                    if !styles.contains_key(&amount.commodity) {
+                        styles.insert(amount.commodity.clone(), amount.style.clone());
+                    }
+                    styles
+                }),
+            rates: prices.iter().fold(HashMap::new(), |mut rates, price| {
                 // insert forward rate
                 rates
                     .entry(price.from.clone())
@@ -62,25 +80,25 @@ impl Converter {
     }
 
     fn find_rates_for_pair(&self, from: &Commodity, to: &Commodity) -> Option<&[DateRate]> {
-        self.from_to_rates
+        self.rates
             .get(from)
             .and_then(|rates| rates.get(to).map(|rates| &rates[..]))
     }
 
     pub fn convert(
         &self,
-        amount: (&Quantity, &Commodity),
+        amount: &Amount,
         target: &Commodity,
         target_date: &NaiveDate,
-    ) -> Result<Quantity, Error> {
-        if amount.1 == target {
-            return Ok(amount.0.clone());
+    ) -> Result<Amount, Error> {
+        if amount.commodity == *target {
+            return Ok(amount.clone());
         }
 
         let rates = self
-            .find_rates_for_pair(amount.1, target)
+            .find_rates_for_pair(&amount.commodity, target)
             .ok_or(Error::NoRate {
-                from: amount.1.clone(),
+                from: amount.commodity.clone(),
                 to: target.clone(),
             })?;
 
@@ -89,12 +107,22 @@ impl Converter {
             .filter(|DateRate(date, _)| date <= target_date)
             .last()
             .ok_or(Error::NoRate {
-                from: amount.1.clone(),
+                from: amount.commodity.clone(),
                 to: target.clone(),
             })?;
 
-        let result = amount.0.clone() * latest_rate.1.clone();
-        Ok(result)
+        let style = self
+            .styles
+            .get(target)
+            .unwrap_or(&AmountStyle::default())
+            .clone();
+
+        Ok(Amount {
+            quantity: amount.quantity.clone() * latest_rate.1.clone(),
+            commodity: target.clone(),
+            style,
+            ..amount.clone()
+        })
     }
 }
 
@@ -126,64 +154,90 @@ mod tests {
                 rate: Decimal::from_f64(10.0).unwrap().into(),
             },
         ];
-        let converter = Converter::new(&prices);
+        let converter = Converter::new(&prices, &[]);
         vec![
             (
                 // no conversion
-                (
-                    &Decimal::from_f64(3.0).unwrap().into(),
-                    &Commodity::from("EUR"),
-                ),
+                Amount {
+                    quantity: Decimal::from_f64(3.0).unwrap().into(),
+                    commodity: Commodity::from("EUR"),
+                    ..Default::default()
+                },
                 Commodity::from("EUR"),
                 NaiveDate::from_ymd_opt(2021, 1, 1).unwrap(),
-                Ok(Decimal::from_f64(3.0).unwrap().into()),
+                Ok(Amount {
+                    quantity: Decimal::from_f64(3.0).unwrap().into(),
+                    commodity: Commodity::from("EUR"),
+                    ..Default::default()
+                }),
             ),
             (
                 // forward conversion with latest rate
-                (
-                    &Decimal::from_f64(3.0).unwrap().into(),
-                    &Commodity::from("EUR"),
-                ),
+                Amount {
+                    quantity: Decimal::from_f64(3.0).unwrap().into(),
+                    commodity: Commodity::from("EUR"),
+                    ..Default::default()
+                },
                 Commodity::from("USD"),
                 NaiveDate::from_ymd_opt(2021, 1, 2).unwrap(),
-                Ok(Decimal::from_f64(0.6).unwrap().into()),
+                Ok(Amount {
+                    quantity: Decimal::from_f64(0.6).unwrap().into(),
+                    commodity: Commodity::from("USD"),
+                    ..Default::default()
+                }),
             ),
             (
                 // forward conversion with earliest rate
-                (
-                    &Decimal::from_f64(3.0).unwrap().into(),
-                    &Commodity::from("EUR"),
-                ),
+                Amount {
+                    quantity: Decimal::from_f64(3.0).unwrap().into(),
+                    commodity: Commodity::from("EUR"),
+                    ..Default::default()
+                },
                 Commodity::from("USD"),
                 NaiveDate::from_ymd_opt(2021, 1, 1).unwrap(),
-                Ok(Decimal::from_f64(7.5).unwrap().into()),
+                Ok(Amount {
+                    quantity: Decimal::from_f64(7.5).unwrap().into(),
+                    commodity: Commodity::from("USD"),
+                    ..Default::default()
+                }),
             ),
             (
                 // reverse conversion with latest rate
-                (
-                    &Decimal::from_f64(5.2).unwrap().into(),
-                    &Commodity::from("USD"),
-                ),
+                Amount {
+                    quantity: Decimal::from_f64(5.2).unwrap().into(),
+                    commodity: Commodity::from("USD"),
+                    ..Default::default()
+                },
                 Commodity::from("EUR"),
                 NaiveDate::from_ymd_opt(2021, 1, 2).unwrap(),
-                Ok(Decimal::from_f64(26.0).unwrap().into()),
+                Ok(Amount {
+                    quantity: Decimal::from_f64(26.0).unwrap().into(),
+                    commodity: Commodity::from("EUR"),
+                    ..Default::default()
+                }),
             ),
             (
                 // reverse conversion with earliest rate
-                (
-                    &Decimal::from_f64(5.2).unwrap().into(),
-                    &Commodity::from("USD"),
-                ),
+                Amount {
+                    quantity: Decimal::from_f64(5.2).unwrap().into(),
+                    commodity: Commodity::from("USD"),
+                    ..Default::default()
+                },
                 Commodity::from("EUR"),
                 NaiveDate::from_ymd_opt(2021, 1, 1).unwrap(),
-                Ok(Decimal::from_f64(2.08).unwrap().into()),
+                Ok(Amount {
+                    quantity: Decimal::from_f64(2.08).unwrap().into(),
+                    commodity: Commodity::from("EUR"),
+                    ..Default::default()
+                }),
             ),
             (
                 // conversion no rate
-                (
-                    &Decimal::from_f64(3.0).unwrap().into(),
-                    &Commodity::from("EUR"),
-                ),
+                Amount {
+                    quantity: Decimal::from_f64(3.0).unwrap().into(),
+                    commodity: Commodity::from("EUR"),
+                    ..Default::default()
+                },
                 Commodity::from("GBP"),
                 NaiveDate::from_ymd_opt(2021, 1, 1).unwrap(),
                 Err(Error::NoRate {
@@ -194,7 +248,7 @@ mod tests {
         ]
         .iter()
         .for_each(|(amount, target, date, expected)| {
-            assert_eq!(converter.convert(*amount, target, date), *expected);
+            assert_eq!(converter.convert(amount, target, date), *expected);
         });
     }
 }

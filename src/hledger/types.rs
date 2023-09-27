@@ -378,6 +378,102 @@ mod tests {
         use super::*;
 
         #[test]
+        fn from() {
+            vec![
+                (
+                    vec![Amount {
+                        quantity: Decimal::new(2, 0).into(),
+                        ..Default::default()
+                    }],
+                    MixedAmount(vec![Amount {
+                        quantity: Decimal::new(2, 0).into(),
+                        ..Default::default()
+                    }]),
+                ),
+                (
+                    vec![
+                        Amount {
+                            commodity: "USD".to_string(),
+                            quantity: Decimal::new(1, 0).into(),
+                            ..Default::default()
+                        },
+                        Amount {
+                            commodity: "EUR".to_string(),
+                            quantity: Decimal::new(2, 0).into(),
+                            ..Default::default()
+                        },
+                    ],
+                    MixedAmount(vec![
+                        Amount {
+                            commodity: "USD".to_string(),
+                            quantity: Decimal::new(1, 0).into(),
+                            ..Default::default()
+                        },
+                        Amount {
+                            commodity: "EUR".to_string(),
+                            quantity: Decimal::new(2, 0).into(),
+                            ..Default::default()
+                        },
+                    ]),
+                ),
+                (
+                    vec![
+                        Amount {
+                            commodity: "USD".to_string(),
+                            quantity: Decimal::new(1, 0).into(),
+                            ..Default::default()
+                        },
+                        Amount {
+                            commodity: "EUR".to_string(),
+                            quantity: Decimal::new(2, 0).into(),
+                            ..Default::default()
+                        },
+                        Amount {
+                            commodity: "USD".to_string(),
+                            quantity: Decimal::new(2, 0).into(),
+                            ..Default::default()
+                        },
+                    ],
+                    MixedAmount(vec![
+                        Amount {
+                            commodity: "USD".to_string(),
+                            quantity: Decimal::new(3, 0).into(),
+                            ..Default::default()
+                        },
+                        Amount {
+                            commodity: "EUR".to_string(),
+                            quantity: Decimal::new(2, 0).into(),
+                            ..Default::default()
+                        },
+                    ]),
+                ),
+                (
+                    vec![
+                        Amount {
+                            commodity: "USD".to_string(),
+                            quantity: Decimal::new(1, 0).into(),
+                            ..Default::default()
+                        },
+                        Amount {
+                            commodity: "USD".to_string(),
+                            quantity: Decimal::new(2, 0).into(),
+                            ..Default::default()
+                        },
+                    ],
+                    MixedAmount(vec![Amount {
+                        commodity: "USD".to_string(),
+                        quantity: Decimal::new(3, 0).into(),
+                        ..Default::default()
+                    }]),
+                ),
+            ]
+            .into_iter()
+            .for_each(|(amount, expected)| {
+                assert_eq!(MixedAmount::from(amount), expected);
+            })
+        }
+
+        #[test]
         fn sum() {
             vec![
                 (
@@ -985,6 +1081,17 @@ impl From<&Amount> for MixedAmount {
 
 impl From<Vec<Amount>> for MixedAmount {
     fn from(amounts: Vec<Amount>) -> Self {
+        let amounts = amounts
+            .iter()
+            .fold(Vec::<Amount>::new(), |mut result, amount| {
+                if let Some(index) = result.iter().position(|a| a.commodity == amount.commodity) {
+                    result[index].quantity = result[index].quantity + amount.quantity;
+                    result
+                } else {
+                    result.push(amount.clone());
+                    result
+                }
+            });
         Self(amounts)
     }
 }
@@ -1008,8 +1115,8 @@ impl ops::Add for MixedAmount {
 
     fn add(self, rhs: Self) -> Self::Output {
         self.0
-            .into_iter()
-            .chain(rhs.0.into_iter())
+            .iter()
+            .chain(rhs.0.iter())
             .fold(Vec::<Amount>::new(), |mut result, amount| {
                 if let Some(index) = result.iter().position(|a| a.commodity == amount.commodity) {
                     result[index].quantity = result[index].quantity + amount.quantity;
@@ -1028,8 +1135,8 @@ impl ops::Sub for MixedAmount {
 
     fn sub(self, rhs: Self) -> Self::Output {
         self.0
-            .into_iter()
-            .chain(rhs.0.into_iter())
+            .iter()
+            .chain(rhs.0.iter())
             .fold(Vec::<Amount>::new(), |mut result, amount| {
                 if let Some(index) = result.iter().position(|a| a.commodity == amount.commodity) {
                     result[index].quantity = result[index].quantity - amount.quantity;

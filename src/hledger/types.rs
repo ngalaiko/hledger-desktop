@@ -757,7 +757,27 @@ mod tests {
     }
 }
 
-pub type MixedAmount = Vec<Amount>;
+#[derive(Debug, Default, Clone, serde::Serialize, serde::Deserialize)]
+#[serde(transparent)]
+pub struct MixedAmount(Vec<Amount>);
+
+impl From<&Amount> for MixedAmount {
+    fn from(amount: &Amount) -> Self {
+        Self(vec![amount.clone()])
+    }
+}
+
+impl From<Vec<Amount>> for MixedAmount {
+    fn from(amounts: Vec<Amount>) -> Self {
+        Self(amounts)
+    }
+}
+
+impl MixedAmount {
+    pub fn iter(&self) -> impl Iterator<Item = &Amount> {
+        self.0.iter()
+    }
+}
 
 #[derive(Debug, Default, serde::Serialize, serde::Deserialize, PartialEq, Eq, Clone, Hash)]
 pub struct AccountName(String);

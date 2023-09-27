@@ -201,7 +201,7 @@ impl Update {
                     ) {
                         (Ok(account), Ok(amount)) => Ok(hledger::Posting {
                             account: account.clone(),
-                            amount: vec![amount.clone()],
+                            amount: amount.into(),
                             ..Default::default()
                         }),
                         _ => Err(Error::InvalidPostings),

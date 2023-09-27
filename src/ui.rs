@@ -398,6 +398,12 @@ fn new_transaction_modal_ui(ui: &mut Ui, tab_state: &TabState) -> Vec<TabStateUp
                                     Err(NewTransactionStateError::InvalidPostings) => {
                                         ui.add_enabled(false, Button::new("add"));
                                     }
+                                    Err(NewTransactionStateError::Unbalanced(saldo)) => {
+                                        ui.label(format!("saldo: {}", saldo));
+                                    }
+                                    Err(NewTransactionStateError::TooManyEmptyAmounts) => {
+                                        ui.label("only one empty amount is allowed");
+                                    }
                                     Ok(postings) => {
                                         if ui.button("add").clicked() {
                                             let tx = hledger::Transaction {

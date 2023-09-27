@@ -4,7 +4,10 @@ use chrono::{Local, NaiveDate};
 use poll_promise::Promise;
 use tauri::Manager;
 
-use crate::{hledger, state::update::StateUpdate};
+use crate::{
+    hledger::{self, MixedAmount},
+    state::update::StateUpdate,
+};
 
 pub struct State {
     creating: Option<Promise<Result<(), hledger::Error>>>,
@@ -86,6 +89,10 @@ impl State {
 pub enum Error {
     #[error("invalid postings")]
     InvalidPostings,
+    #[error("only one empty amount is allowed")]
+    TooManyEmptyAmounts,
+    #[error("unbalanced posting")]
+    Unbalanced(MixedAmount),
 }
 
 pub struct PostingState {
@@ -101,7 +108,7 @@ impl Default for PostingState {
             account: String::new(),
             parsed_account: Err(hledger::ParseAccountNameError::Empty),
             amount: String::new(),
-            parsed_amount: Ok(hledger::Amount::default()),
+            parsed_amount: Err(hledger::ParseAmountError::Empty),
         }
     }
 }
@@ -149,8 +156,8 @@ impl Update {
                 posting.parsed_account = account.parse();
             }
         }))
-        .and_then(Self::convert_postings())
         .and_then(Self::insert_new_postings())
+        .and_then(Self::convert_postings())
     }
 
     pub fn set_posting_amount(index: usize, amount: &str) -> Self {
@@ -161,8 +168,8 @@ impl Update {
                 posting.parsed_amount = amount.parse();
             }
         }))
-        .and_then(Self::convert_postings())
         .and_then(Self::insert_new_postings())
+        .and_then(Self::convert_postings())
     }
 
     pub fn set_destination(destination: &path::Path) -> Self {
@@ -190,24 +197,75 @@ impl Update {
 
     fn convert_postings() -> Self {
         Self::Ephemeral(Box::new(|_, state| {
-            state.parsed_postings = state
-                .postings
-                .iter()
-                .filter(|posting| !posting.account.is_empty() || !posting.amount.is_empty())
+            let non_empty_postings = state.postings.iter().filter(|posting| {
+                !matches!(
+                    (
+                        posting.parsed_account.as_ref(),
+                        posting.parsed_amount.as_ref(),
+                    ),
+                    (
+                        Err(hledger::ParseAccountNameError::Empty),
+                        Err(hledger::ParseAmountError::Empty)
+                    ),
+                )
+            });
+
+            let empty_amounts = non_empty_postings
+                .clone()
+                .filter(|posting| {
+                    matches!(
+                        posting.parsed_amount.as_ref(),
+                        Err(hledger::ParseAmountError::Empty),
+                    )
+                })
+                .count();
+            if empty_amounts > 1 {
+                state.parsed_postings = Err(Error::TooManyEmptyAmounts);
+                return;
+            }
+
+            let mut saldo = Some(
+                non_empty_postings
+                    .clone()
+                    .filter_map(|posting| posting.parsed_amount.as_ref().ok())
+                    .map(|amount| vec![amount.clone()].into())
+                    .sum::<MixedAmount>()
+                    .negate(),
+            );
+
+            let postings = non_empty_postings
                 .map(|posting| {
                     match (
                         posting.parsed_account.as_ref(),
                         posting.parsed_amount.as_ref(),
+                        saldo.as_ref(),
                     ) {
-                        (Ok(account), Ok(amount)) => Ok(hledger::Posting {
+                        (Ok(account), Ok(amount), _) => Ok(hledger::Posting {
                             account: account.clone(),
                             amount: amount.into(),
                             ..Default::default()
                         }),
+                        (Ok(account), Err(hledger::ParseAmountError::Empty), Some(s)) => {
+                            let posting = hledger::Posting {
+                                account: account.clone(),
+                                amount: s.clone(),
+                                ..Default::default()
+                            };
+                            saldo = None;
+                            Ok(posting)
+                        }
                         _ => Err(Error::InvalidPostings),
                     }
                 })
                 .collect::<Result<Vec<_>, _>>();
+
+            if let Some(saldo) = saldo {
+                if postings.is_ok() && !saldo.is_zero() {
+                    state.parsed_postings = Err(Error::Unbalanced(saldo));
+                    return;
+                }
+            }
+            state.parsed_postings = postings;
         }))
     }
 

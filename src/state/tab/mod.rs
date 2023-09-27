@@ -522,7 +522,8 @@ fn to_display_transaction(
                         })
                         .unwrap_or_else(|| amount.clone())
                 })
-                .collect::<Vec<_>>().into(),
+                .collect::<Vec<_>>()
+                .into(),
             ..posting.clone()
         })
         .collect::<Vec<_>>();

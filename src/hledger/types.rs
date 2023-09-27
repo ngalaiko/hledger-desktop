@@ -1,4 +1,4 @@
-use std::{fmt, ops, path, str::FromStr};
+use std::{fmt, iter::Sum, ops, path, str::FromStr};
 
 use lazy_static::lazy_static;
 use regex::Regex;
@@ -169,6 +169,19 @@ pub struct Amount {
     pub price: Box<Option<AmountPrice>>,
 }
 
+impl Amount {
+    pub fn is_zero(&self) -> bool {
+        self.quantity.0.is_zero()
+    }
+
+    pub fn negate(&self) -> Self {
+        Self {
+            quantity: Quantity(-self.quantity.0),
+            ..self.clone()
+        }
+    }
+}
+
 lazy_static! {
     static ref UNQUOTED_COMMODITY: Regex = Regex::new(
         r"^([^[[:digit:]][[:space:]][-!?\.,\+]]+)|([^[[:digit:]][[:space:]][-!?\.,\+]]+)$"
@@ -179,6 +192,8 @@ lazy_static! {
 
 #[derive(Debug, Clone, thiserror::Error, PartialEq)]
 pub enum ParseAmountError {
+    #[error("empty amount")]
+    Empty,
     #[error("failed to parse quantity: {0}")]
     InvalidAmout(String),
     #[error("quantity not found")]
@@ -207,6 +222,9 @@ impl FromStr for Amount {
                 })
         } else {
             let s = s.trim();
+            if s.is_empty() {
+                return Err(ParseAmountError::Empty);
+            }
 
             // maybe negative sign is before commodity
             let is_negative = s.starts_with('-');
@@ -1073,6 +1091,18 @@ mod tests {
 #[serde(transparent)]
 pub struct MixedAmount(Vec<Amount>);
 
+impl fmt::Display for MixedAmount {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let result = self
+            .0
+            .iter()
+            .map(|amount| amount.to_string())
+            .collect::<Vec<_>>()
+            .join(", ");
+        write!(f, "{}", result)
+    }
+}
+
 impl From<&Amount> for MixedAmount {
     fn from(amount: &Amount) -> Self {
         Self(vec![amount.clone()])
@@ -1097,6 +1127,18 @@ impl From<Vec<Amount>> for MixedAmount {
 }
 
 impl MixedAmount {
+    pub fn zero() -> Self {
+        Self(vec![])
+    }
+
+    pub fn negate(&self) -> Self {
+        Self(self.0.iter().map(Amount::negate).collect())
+    }
+
+    pub fn is_zero(&self) -> bool {
+        self.0.iter().all(Amount::is_zero)
+    }
+
     pub fn iter(&self) -> impl Iterator<Item = &Amount> {
         self.0.iter()
     }
@@ -1107,6 +1149,15 @@ impl PartialEq for MixedAmount {
         self.0
             .iter()
             .all(|amount| other.0.iter().any(|other_amount| amount == other_amount))
+    }
+}
+
+impl Sum for MixedAmount {
+    fn sum<I: Iterator<Item = Self>>(iter: I) -> Self {
+        iter.fold(Self::zero(), |mut result, amount| {
+            result = result + amount;
+            result
+        })
     }
 }
 

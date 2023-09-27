@@ -4,7 +4,10 @@ use tauri_egui::{
     egui::{Context, FontDefinitions},
 };
 
-use crate::{state::State, ui::show};
+use crate::{
+    state::{State, Update},
+    ui::show,
+};
 
 pub struct App {
     handle: AppHandle,
@@ -18,7 +21,7 @@ impl App {
         egui_phosphor::add_to_fonts(&mut fonts, egui_phosphor::Variant::Regular);
         cc.egui_ctx.set_fonts(fonts);
 
-        let state = State::from(&handle);
+        let state = State::try_from(&handle).unwrap_or_default();
         cc.egui_ctx.set_visuals(state.theme().into());
         Self { state, handle }
     }
@@ -26,12 +29,34 @@ impl App {
 
 impl tauri_egui::eframe::App for App {
     fn update(&mut self, ctx: &Context, frame: &mut tauri_egui::eframe::Frame) {
-        // update fps counter
-        self.state
-            .on_new_frame(ctx.input(|i| i.time), frame.info().cpu_usage);
+        let before_render_updates = &[Update::frame_history(
+            ctx.input(|i| i.time),
+            frame.info().cpu_usage,
+        )];
+        let render_updates = show(ctx, &self.state);
 
-        let updates = show(ctx, &self.state);
+        let all_updates = before_render_updates
+            .iter()
+            .chain(render_updates.iter())
+            .collect::<Vec<_>>();
 
-        self.state.apply_updates(ctx, &self.handle, &updates);
+        let should_save = all_updates
+            .iter()
+            .fold(false, |should_save, update| match update {
+                Update::Persistent(update) => {
+                    update(&self.handle, &mut self.state);
+                    true
+                }
+                Update::Ephemeral(update) => {
+                    update(&self.handle, &mut self.state);
+                    should_save
+                }
+            });
+
+        if should_save {
+            if let Err(error) = self.state.save(&self.handle) {
+                tracing::error!("failed to save state: {}", error);
+            }
+        }
     }
 }

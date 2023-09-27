@@ -5,7 +5,7 @@ use std::{fs, path};
 
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Manager};
-use tauri_egui::egui::{util::History, Context};
+use tauri_egui::egui::util::History;
 use tracing::instrument;
 
 use update::StateUpdate;
@@ -38,17 +38,15 @@ impl Default for RenderMode {
     }
 }
 
-impl From<&AppHandle> for State {
-    fn from(handle: &AppHandle) -> Self {
-        Self::load(handle)
+impl TryFrom<&AppHandle> for State {
+    type Error = StateError;
+
+    fn try_from(value: &AppHandle) -> Result<Self, Self::Error> {
+        Self::load(value)
     }
 }
 
 impl State {
-    pub fn on_new_frame(&mut self, now: f64, previous_frame_time: Option<f32>) {
-        self.frames.on_new_frame(now, previous_frame_time)
-    }
-
     pub fn tabs(&self) -> &[tab::State] {
         &self.tabs
     }
@@ -74,77 +72,28 @@ impl State {
     }
 
     #[instrument(skip_all)]
-    fn save(&self, handle: &AppHandle) {
-        if let Err(error) = handle.path().app_local_data_dir().map(|path| {
-            if let Err(error) = std::fs::create_dir_all(&path) {
-                tracing::error!("failed to create config directory: {:#?}", error);
-            } else {
-                let path = path.join("state.json");
-                match std::fs::File::options()
-                    .write(true)
-                    .create(true)
-                    .truncate(true)
-                    .open(path)
-                {
-                    Err(error) => tracing::error!("failed to open config file: {:#?}", error),
-                    Ok(file) => {
-                        if let Err(error) = serde_json::to_writer_pretty(file, self) {
-                            tracing::error!("failed to write config: {:#?}", error)
-                        }
-                    }
-                }
-            }
-        }) {
-            tracing::error!("failed to open config file: {:#?}", error)
-        }
+    pub fn save(&self, handle: &AppHandle) -> Result<(), StateError> {
+        let local_data_dir = handle.path().app_local_data_dir()?;
+        fs::create_dir_all(&local_data_dir)?;
+        let file = fs::File::options()
+            .write(true)
+            .create(true)
+            .truncate(true)
+            .open(local_data_dir.join("state.json"))?;
+        serde_json::to_writer_pretty(&file, self)?;
+        Ok(())
     }
 
     #[instrument(skip_all)]
-    fn load(handle: &AppHandle) -> Self {
-        handle
-            .path()
-            .app_local_data_dir()
-            .map(|path| {
-                let path = path.join("state.json");
-                if !path.exists() {
-                    Self::default()
-                } else {
-                    fs::File::open(path)
-                        .map(|file| {
-                            serde_json::from_reader(file)
-                                .map_err(|err| {
-                                    tracing::error!("failed to parse config: {:#?}", err)
-                                })
-                                .unwrap_or_default()
-                        })
-                        .map_err(|err| tracing::error!("failed to read config: {:#?}", err))
-                        .unwrap_or_default()
-                }
-            })
-            .map_err(|err| tracing::error!("failed to open config file: {:#?}", err))
-            .unwrap_or_default()
-    }
-
-    pub fn apply_updates(&mut self, ctx: &Context, handle: &AppHandle, updates: &[Update]) {
-        if updates.is_empty() {
-            return;
+    fn load(handle: &AppHandle) -> Result<Self, StateError> {
+        let local_data_dir = handle.path().app_local_data_dir()?;
+        let path = local_data_dir.join("state.json");
+        if !path.exists() {
+            return Ok(Self::default());
         }
-
-        let mut should_save = false;
-        for update in updates {
-            match update {
-                Update::Persistent(update) => {
-                    update(handle, self);
-                    should_save = true;
-                }
-                Update::Ephemeral(update) => update(handle, self),
-            };
-        }
-
-        if should_save {
-            self.save(handle);
-        }
-        ctx.request_repaint();
+        let file = fs::File::open(path)?;
+        let state = serde_json::from_reader(file)?;
+        Ok(state)
     }
 }
 
@@ -190,6 +139,12 @@ pub enum Theme {
 pub type Update = StateUpdate<State>;
 
 impl Update {
+    pub fn frame_history(now: f64, previous_frame_time: Option<f32>) -> Self {
+        Update::Ephemeral(Box::new(move |_, state| {
+            state.frames.on_new_frame(now, previous_frame_time);
+        }))
+    }
+
     pub fn set_theme(theme: &Theme) -> Self {
         let theme = *theme;
         Update::Persistent(Box::new(move |_, state| {
@@ -241,4 +196,14 @@ impl Update {
             state.render_mode = mode;
         }))
     }
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum StateError {
+    #[error(transparent)]
+    Io(#[from] std::io::Error),
+    #[error(transparent)]
+    TauriPathError(#[from] tauri::path::Error),
+    #[error(transparent)]
+    Serde(#[from] serde_json::Error),
 }

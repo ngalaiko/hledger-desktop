@@ -48,7 +48,7 @@ impl Converter {
                     .or_insert_with(HashMap::new)
                     .entry(price.to.clone())
                     .or_insert_with(Vec::new)
-                    .push(DateRate(price.date, price.rate.clone()));
+                    .push(DateRate(price.date, price.rate));
 
                 // make sure the latest rate is last
                 rates
@@ -64,7 +64,7 @@ impl Converter {
                     .or_insert_with(HashMap::new)
                     .entry(price.from.clone())
                     .or_insert_with(Vec::new)
-                    .push(DateRate(price.date, Quantity::ONE / price.rate.clone()));
+                    .push(DateRate(price.date, Quantity::ONE / price.rate));
 
                 // make sure the latest rate is last
                 rates
@@ -118,7 +118,7 @@ impl Converter {
             .clone();
 
         Ok(Amount {
-            quantity: amount.quantity.clone() * latest_rate.1.clone(),
+            quantity: amount.quantity * latest_rate.1,
             commodity: target.clone(),
             style,
             ..amount.clone()
@@ -133,7 +133,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_convertion() {
+    fn convertion() {
         let prices = vec![
             Price {
                 date: NaiveDate::from_ymd_opt(2021, 1, 1).unwrap(),

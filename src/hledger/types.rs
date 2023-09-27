@@ -19,7 +19,7 @@ pub struct AccountDeclarationInfo {
     pub declaration_order: usize,
 }
 
-#[derive(Debug, Default, Clone, PartialEq)]
+#[derive(Debug, Default, Clone, Copy, PartialEq)]
 pub struct Quantity(Decimal);
 
 impl serde::Serialize for Quantity {
@@ -374,386 +374,602 @@ impl fmt::Display for Amount {
 mod tests {
     use super::*;
 
-    #[test]
-    fn test_quantity_serde() {
-        let raw = r#"{"decimalMantissa":123456,"decimalPlaces":3,"floatingPoint":123.456}"#;
-        let quantity: Quantity = serde_json::from_str(raw).unwrap();
-        assert_eq!(quantity.0, Decimal::new(123456, 3));
-        let quantity = serde_json::to_string(&quantity).unwrap();
-        assert_eq!(quantity, raw);
+    mod mixed_amount {
+        use super::*;
+
+        #[test]
+        fn sum() {
+            vec![
+                (
+                    vec![
+                        MixedAmount::from(vec![Amount {
+                            quantity: Decimal::new(1, 0).into(),
+                            ..Default::default()
+                        }]),
+                        MixedAmount::from(vec![Amount {
+                            quantity: Decimal::new(2, 0).into(),
+                            ..Default::default()
+                        }]),
+                    ],
+                    MixedAmount::from(vec![Amount {
+                        quantity: Decimal::new(3, 0).into(),
+                        ..Default::default()
+                    }]),
+                ),
+                (
+                    vec![
+                        MixedAmount::from(vec![Amount {
+                            commodity: "USD".to_string(),
+                            quantity: Decimal::new(1, 0).into(),
+                            ..Default::default()
+                        }]),
+                        MixedAmount::from(vec![Amount {
+                            commodity: "EUR".to_string(),
+                            quantity: Decimal::new(2, 0).into(),
+                            ..Default::default()
+                        }]),
+                    ],
+                    MixedAmount::from(vec![
+                        Amount {
+                            commodity: "USD".to_string(),
+                            quantity: Decimal::new(1, 0).into(),
+                            ..Default::default()
+                        },
+                        Amount {
+                            commodity: "EUR".to_string(),
+                            quantity: Decimal::new(2, 0).into(),
+                            ..Default::default()
+                        },
+                    ]),
+                ),
+                (
+                    vec![
+                        MixedAmount::from(vec![
+                            Amount {
+                                commodity: "USD".to_string(),
+                                quantity: Decimal::new(1, 0).into(),
+                                ..Default::default()
+                            },
+                            Amount {
+                                commodity: "EUR".to_string(),
+                                quantity: Decimal::new(2, 0).into(),
+                                ..Default::default()
+                            },
+                        ]),
+                        MixedAmount::from(vec![Amount {
+                            commodity: "EUR".to_string(),
+                            quantity: Decimal::new(2, 0).into(),
+                            ..Default::default()
+                        }]),
+                    ],
+                    MixedAmount::from(vec![
+                        Amount {
+                            commodity: "USD".to_string(),
+                            quantity: Decimal::new(1, 0).into(),
+                            ..Default::default()
+                        },
+                        Amount {
+                            commodity: "EUR".to_string(),
+                            quantity: Decimal::new(4, 0).into(),
+                            ..Default::default()
+                        },
+                    ]),
+                ),
+            ]
+            .into_iter()
+            .for_each(|(amounts, expected)| {
+                let mut got = amounts[0].clone();
+                amounts.iter().skip(1).for_each(|amount| {
+                    got = got.clone() + amount.clone();
+                });
+                assert_eq!(got, expected);
+            })
+        }
+
+        #[test]
+        fn sub() {
+            vec![
+                (
+                    vec![
+                        MixedAmount::from(vec![Amount {
+                            quantity: Decimal::new(1, 0).into(),
+                            ..Default::default()
+                        }]),
+                        MixedAmount::from(vec![Amount {
+                            quantity: Decimal::new(2, 0).into(),
+                            ..Default::default()
+                        }]),
+                    ],
+                    MixedAmount::from(vec![Amount {
+                        quantity: Decimal::new(-1, 0).into(),
+                        ..Default::default()
+                    }]),
+                ),
+                (
+                    vec![
+                        MixedAmount::from(vec![Amount {
+                            commodity: "USD".to_string(),
+                            quantity: Decimal::new(1, 0).into(),
+                            ..Default::default()
+                        }]),
+                        MixedAmount::from(vec![Amount {
+                            commodity: "EUR".to_string(),
+                            quantity: Decimal::new(2, 0).into(),
+                            ..Default::default()
+                        }]),
+                    ],
+                    MixedAmount::from(vec![
+                        Amount {
+                            commodity: "USD".to_string(),
+                            quantity: Decimal::new(1, 0).into(),
+                            ..Default::default()
+                        },
+                        Amount {
+                            commodity: "EUR".to_string(),
+                            quantity: Decimal::new(2, 0).into(),
+                            ..Default::default()
+                        },
+                    ]),
+                ),
+                (
+                    vec![
+                        MixedAmount::from(vec![
+                            Amount {
+                                commodity: "USD".to_string(),
+                                quantity: Decimal::new(1, 0).into(),
+                                ..Default::default()
+                            },
+                            Amount {
+                                commodity: "EUR".to_string(),
+                                quantity: Decimal::new(2, 0).into(),
+                                ..Default::default()
+                            },
+                        ]),
+                        MixedAmount::from(vec![Amount {
+                            commodity: "EUR".to_string(),
+                            quantity: Decimal::new(1, 0).into(),
+                            ..Default::default()
+                        }]),
+                    ],
+                    MixedAmount::from(vec![
+                        Amount {
+                            commodity: "USD".to_string(),
+                            quantity: Decimal::new(1, 0).into(),
+                            ..Default::default()
+                        },
+                        Amount {
+                            commodity: "EUR".to_string(),
+                            quantity: Decimal::new(1, 0).into(),
+                            ..Default::default()
+                        },
+                    ]),
+                ),
+                (
+                    vec![
+                        MixedAmount::from(vec![
+                            Amount {
+                                commodity: "USD".to_string(),
+                                quantity: Decimal::new(1, 0).into(),
+                                ..Default::default()
+                            },
+                            Amount {
+                                commodity: "EUR".to_string(),
+                                quantity: Decimal::new(2, 0).into(),
+                                ..Default::default()
+                            },
+                        ]),
+                        MixedAmount::from(vec![Amount {
+                            commodity: "EUR".to_string(),
+                            quantity: Decimal::new(2, 0).into(),
+                            ..Default::default()
+                        }]),
+                    ],
+                    MixedAmount::from(vec![Amount {
+                        commodity: "USD".to_string(),
+                        quantity: Decimal::new(1, 0).into(),
+                        ..Default::default()
+                    }]),
+                ),
+            ]
+            .into_iter()
+            .for_each(|(amounts, expected)| {
+                let mut got = amounts[0].clone();
+                amounts.iter().skip(1).for_each(|amount| {
+                    got = got.clone() - amount.clone();
+                });
+                assert_eq!(got, expected);
+            })
+        }
     }
 
-    #[test]
-    fn test_amount_parse() {
-        vec![
-            ("s", Err(ParseAmountError::MissingAmount)),
-            (
-                "1",
-                Ok(Amount {
-                    commodity: "".to_string(),
-                    quantity: Quantity(Decimal::new(1, 0)),
-                    style: AmountStyle {
-                        commodity_side: Side::Right,
-                        spaced: false,
-                        precision: 0,
-                        decimal_point: None,
-                        digit_groups: None,
-                    },
-                    price: Box::new(None),
-                }),
-            ),
-            (
-                "$1",
-                Ok(Amount {
-                    commodity: "$".to_string(),
-                    quantity: Quantity(Decimal::new(1, 0)),
-                    style: AmountStyle {
-                        commodity_side: Side::Left,
-                        spaced: false,
-                        precision: 0,
-                        decimal_point: None,
-                        digit_groups: None,
-                    },
-                    price: Box::new(None),
-                }),
-            ),
-            (
-                "4000 AAPL",
-                Ok(Amount {
-                    commodity: "AAPL".to_string(),
-                    quantity: Quantity(Decimal::new(4000, 0)),
-                    style: AmountStyle {
-                        commodity_side: Side::Right,
-                        spaced: true,
-                        precision: 0,
-                        decimal_point: None,
-                        digit_groups: None,
-                    },
-                    price: Box::new(None),
-                }),
-            ),
-            (
-                "3 \"green apples\"",
-                Ok(Amount {
-                    commodity: "green apples".to_string(),
-                    quantity: Quantity(Decimal::new(3, 0)),
-                    style: AmountStyle {
-                        commodity_side: Side::Right,
-                        spaced: true,
-                        precision: 0,
-                        decimal_point: None,
-                        digit_groups: None,
-                    },
-                    price: Box::new(None),
-                }),
-            ),
-            (
-                "-$1",
-                Ok(Amount {
-                    commodity: "$".to_string(),
-                    quantity: Quantity(Decimal::new(-1, 0)),
-                    style: AmountStyle {
-                        commodity_side: Side::Left,
-                        spaced: false,
-                        precision: 0,
-                        decimal_point: None,
-                        digit_groups: None,
-                    },
-                    price: Box::new(None),
-                }),
-            ),
-            (
-                "$-1",
-                Ok(Amount {
-                    commodity: "$".to_string(),
-                    quantity: Quantity(Decimal::new(-1, 0)),
-                    style: AmountStyle {
-                        commodity_side: Side::Left,
-                        spaced: false,
-                        precision: 0,
-                        decimal_point: None,
-                        digit_groups: None,
-                    },
-                    price: Box::new(None),
-                }),
-            ),
-            (
-                "+ $1",
-                Ok(Amount {
-                    commodity: "$".to_string(),
-                    quantity: Quantity(Decimal::new(1, 0)),
-                    style: AmountStyle {
-                        commodity_side: Side::Left,
-                        spaced: false,
-                        precision: 0,
-                        decimal_point: None,
-                        digit_groups: None,
-                    },
-                    price: Box::new(None),
-                }),
-            ),
-            (
-                "$-      1",
-                Ok(Amount {
-                    commodity: "$".to_string(),
-                    quantity: Quantity(Decimal::new(-1, 0)),
-                    style: AmountStyle {
-                        commodity_side: Side::Left,
-                        spaced: false,
-                        precision: 0,
-                        decimal_point: None,
-                        digit_groups: None,
-                    },
-                    price: Box::new(None),
-                }),
-            ),
-            (
-                "1.23",
-                Ok(Amount {
-                    commodity: "".to_string(),
-                    quantity: Quantity(Decimal::new(123, 2)),
-                    style: AmountStyle {
-                        commodity_side: Side::Right,
-                        spaced: false,
-                        precision: 2,
-                        decimal_point: Some('.'),
-                        digit_groups: None,
-                    },
-                    price: Box::new(None),
-                }),
-            ),
-            (
-                "1,23456780000009",
-                Ok(Amount {
-                    commodity: "".to_string(),
-                    quantity: Quantity(Decimal::new(123456780000009, 14)),
-                    style: AmountStyle {
-                        commodity_side: Side::Right,
-                        spaced: false,
-                        precision: 14,
-                        decimal_point: Some(','),
-                        digit_groups: None,
-                    },
-                    price: Box::new(None),
-                }),
-            ),
-            (
-                "EUR 2.000.000,00",
-                Ok(Amount {
-                    commodity: "EUR".to_string(),
-                    quantity: Quantity(Decimal::new(200000000, 2)),
-                    style: AmountStyle {
-                        commodity_side: Side::Left,
-                        spaced: true,
-                        precision: 2,
-                        decimal_point: Some(','),
-                        digit_groups: None,
-                    },
-                    price: Box::new(None),
-                }),
-            ),
-            (
-                "INR 9,99,99,999.00",
-                Ok(Amount {
-                    commodity: "INR".to_string(),
-                    quantity: Quantity(Decimal::new(9999999900, 2)),
-                    style: AmountStyle {
-                        commodity_side: Side::Left,
-                        spaced: true,
-                        precision: 2,
-                        decimal_point: Some('.'),
-                        digit_groups: None,
-                    },
-                    price: Box::new(None),
-                }),
-            ),
-            (
-                "1 000 000.9455",
-                Ok(Amount {
-                    commodity: "".to_string(),
-                    quantity: Quantity(Decimal::new(10000009455, 4)),
-                    style: AmountStyle {
-                        commodity_side: Side::Right,
-                        spaced: false,
-                        precision: 4,
-                        decimal_point: Some('.'),
-                        digit_groups: None,
-                    },
-                    price: Box::new(None),
-                }),
-            ),
-            (
-                "-2 \"Liquorice Wands\"",
-                Ok(Amount {
-                    commodity: "Liquorice Wands".to_string(),
-                    quantity: Quantity(Decimal::new(-2, 0)),
-                    style: AmountStyle {
-                        commodity_side: Side::Right,
-                        spaced: true,
-                        precision: 0,
-                        decimal_point: None,
-                        digit_groups: None,
-                    },
-                    price: Box::new(None),
-                }),
-            ),
-            (
-                "1 SEK @ 1.2 USD",
-                Ok(Amount {
-                    commodity: "SEK".to_string(),
-                    quantity: Quantity(Decimal::new(1, 0)),
-                    style: AmountStyle {
-                        commodity_side: Side::Right,
-                        spaced: true,
-                        precision: 0,
-                        decimal_point: None,
-                        digit_groups: None,
-                    },
-                    price: Box::new(Some(AmountPrice::UnitPrice(Amount {
-                        commodity: "USD".to_string(),
-                        quantity: Quantity(Decimal::new(12, 1)),
+    mod quantity {
+        use super::*;
+
+        #[test]
+        fn serde() {
+            let raw = r#"{"decimalMantissa":123456,"decimalPlaces":3,"floatingPoint":123.456}"#;
+            let quantity: Quantity = serde_json::from_str(raw).unwrap();
+            assert_eq!(quantity.0, Decimal::new(123456, 3));
+            let quantity = serde_json::to_string(&quantity).unwrap();
+            assert_eq!(quantity, raw);
+        }
+    }
+
+    mod amount {
+        use super::*;
+
+        #[test]
+        fn parse() {
+            vec![
+                ("s", Err(ParseAmountError::MissingAmount)),
+                (
+                    "1",
+                    Ok(Amount {
+                        commodity: "".to_string(),
+                        quantity: Quantity(Decimal::new(1, 0)),
+                        style: AmountStyle {
+                            commodity_side: Side::Right,
+                            spaced: false,
+                            precision: 0,
+                            decimal_point: None,
+                            digit_groups: None,
+                        },
+                        price: Box::new(None),
+                    }),
+                ),
+                (
+                    "$1",
+                    Ok(Amount {
+                        commodity: "$".to_string(),
+                        quantity: Quantity(Decimal::new(1, 0)),
+                        style: AmountStyle {
+                            commodity_side: Side::Left,
+                            spaced: false,
+                            precision: 0,
+                            decimal_point: None,
+                            digit_groups: None,
+                        },
+                        price: Box::new(None),
+                    }),
+                ),
+                (
+                    "4000 AAPL",
+                    Ok(Amount {
+                        commodity: "AAPL".to_string(),
+                        quantity: Quantity(Decimal::new(4000, 0)),
                         style: AmountStyle {
                             commodity_side: Side::Right,
                             spaced: true,
-                            precision: 1,
+                            precision: 0,
+                            decimal_point: None,
+                            digit_groups: None,
+                        },
+                        price: Box::new(None),
+                    }),
+                ),
+                (
+                    "3 \"green apples\"",
+                    Ok(Amount {
+                        commodity: "green apples".to_string(),
+                        quantity: Quantity(Decimal::new(3, 0)),
+                        style: AmountStyle {
+                            commodity_side: Side::Right,
+                            spaced: true,
+                            precision: 0,
+                            decimal_point: None,
+                            digit_groups: None,
+                        },
+                        price: Box::new(None),
+                    }),
+                ),
+                (
+                    "-$1",
+                    Ok(Amount {
+                        commodity: "$".to_string(),
+                        quantity: Quantity(Decimal::new(-1, 0)),
+                        style: AmountStyle {
+                            commodity_side: Side::Left,
+                            spaced: false,
+                            precision: 0,
+                            decimal_point: None,
+                            digit_groups: None,
+                        },
+                        price: Box::new(None),
+                    }),
+                ),
+                (
+                    "$-1",
+                    Ok(Amount {
+                        commodity: "$".to_string(),
+                        quantity: Quantity(Decimal::new(-1, 0)),
+                        style: AmountStyle {
+                            commodity_side: Side::Left,
+                            spaced: false,
+                            precision: 0,
+                            decimal_point: None,
+                            digit_groups: None,
+                        },
+                        price: Box::new(None),
+                    }),
+                ),
+                (
+                    "+ $1",
+                    Ok(Amount {
+                        commodity: "$".to_string(),
+                        quantity: Quantity(Decimal::new(1, 0)),
+                        style: AmountStyle {
+                            commodity_side: Side::Left,
+                            spaced: false,
+                            precision: 0,
+                            decimal_point: None,
+                            digit_groups: None,
+                        },
+                        price: Box::new(None),
+                    }),
+                ),
+                (
+                    "$-      1",
+                    Ok(Amount {
+                        commodity: "$".to_string(),
+                        quantity: Quantity(Decimal::new(-1, 0)),
+                        style: AmountStyle {
+                            commodity_side: Side::Left,
+                            spaced: false,
+                            precision: 0,
+                            decimal_point: None,
+                            digit_groups: None,
+                        },
+                        price: Box::new(None),
+                    }),
+                ),
+                (
+                    "1.23",
+                    Ok(Amount {
+                        commodity: "".to_string(),
+                        quantity: Quantity(Decimal::new(123, 2)),
+                        style: AmountStyle {
+                            commodity_side: Side::Right,
+                            spaced: false,
+                            precision: 2,
                             decimal_point: Some('.'),
                             digit_groups: None,
                         },
                         price: Box::new(None),
-                    }))),
-                }),
-            ),
-            (
-                "1 SEK @@ 1.2 USD",
-                Ok(Amount {
-                    commodity: "SEK".to_string(),
-                    quantity: Quantity(Decimal::new(1, 0)),
-                    style: AmountStyle {
-                        commodity_side: Side::Right,
-                        spaced: true,
-                        precision: 0,
-                        decimal_point: None,
-                        digit_groups: None,
-                    },
-                    price: Box::new(Some(AmountPrice::TotalPrice(Amount {
-                        commodity: "USD".to_string(),
-                        quantity: Quantity(Decimal::new(12, 1)),
+                    }),
+                ),
+                (
+                    "1,23456780000009",
+                    Ok(Amount {
+                        commodity: "".to_string(),
+                        quantity: Quantity(Decimal::new(123456780000009, 14)),
                         style: AmountStyle {
                             commodity_side: Side::Right,
+                            spaced: false,
+                            precision: 14,
+                            decimal_point: Some(','),
+                            digit_groups: None,
+                        },
+                        price: Box::new(None),
+                    }),
+                ),
+                (
+                    "EUR 2.000.000,00",
+                    Ok(Amount {
+                        commodity: "EUR".to_string(),
+                        quantity: Quantity(Decimal::new(200000000, 2)),
+                        style: AmountStyle {
+                            commodity_side: Side::Left,
                             spaced: true,
-                            precision: 1,
+                            precision: 2,
+                            decimal_point: Some(','),
+                            digit_groups: None,
+                        },
+                        price: Box::new(None),
+                    }),
+                ),
+                (
+                    "INR 9,99,99,999.00",
+                    Ok(Amount {
+                        commodity: "INR".to_string(),
+                        quantity: Quantity(Decimal::new(9999999900, 2)),
+                        style: AmountStyle {
+                            commodity_side: Side::Left,
+                            spaced: true,
+                            precision: 2,
                             decimal_point: Some('.'),
                             digit_groups: None,
                         },
                         price: Box::new(None),
-                    }))),
-                }),
-            ),
-        ]
-        .into_iter()
-        .for_each(|(raw, expected)| {
-            assert_eq!(raw.parse::<Amount>(), expected, "failed to parse {}", raw);
-        });
-    }
+                    }),
+                ),
+                (
+                    "1 000 000.9455",
+                    Ok(Amount {
+                        commodity: "".to_string(),
+                        quantity: Quantity(Decimal::new(10000009455, 4)),
+                        style: AmountStyle {
+                            commodity_side: Side::Right,
+                            spaced: false,
+                            precision: 4,
+                            decimal_point: Some('.'),
+                            digit_groups: None,
+                        },
+                        price: Box::new(None),
+                    }),
+                ),
+                (
+                    "-2 \"Liquorice Wands\"",
+                    Ok(Amount {
+                        commodity: "Liquorice Wands".to_string(),
+                        quantity: Quantity(Decimal::new(-2, 0)),
+                        style: AmountStyle {
+                            commodity_side: Side::Right,
+                            spaced: true,
+                            precision: 0,
+                            decimal_point: None,
+                            digit_groups: None,
+                        },
+                        price: Box::new(None),
+                    }),
+                ),
+                (
+                    "1 SEK @ 1.2 USD",
+                    Ok(Amount {
+                        commodity: "SEK".to_string(),
+                        quantity: Quantity(Decimal::new(1, 0)),
+                        style: AmountStyle {
+                            commodity_side: Side::Right,
+                            spaced: true,
+                            precision: 0,
+                            decimal_point: None,
+                            digit_groups: None,
+                        },
+                        price: Box::new(Some(AmountPrice::UnitPrice(Amount {
+                            commodity: "USD".to_string(),
+                            quantity: Quantity(Decimal::new(12, 1)),
+                            style: AmountStyle {
+                                commodity_side: Side::Right,
+                                spaced: true,
+                                precision: 1,
+                                decimal_point: Some('.'),
+                                digit_groups: None,
+                            },
+                            price: Box::new(None),
+                        }))),
+                    }),
+                ),
+                (
+                    "1 SEK @@ 1.2 USD",
+                    Ok(Amount {
+                        commodity: "SEK".to_string(),
+                        quantity: Quantity(Decimal::new(1, 0)),
+                        style: AmountStyle {
+                            commodity_side: Side::Right,
+                            spaced: true,
+                            precision: 0,
+                            decimal_point: None,
+                            digit_groups: None,
+                        },
+                        price: Box::new(Some(AmountPrice::TotalPrice(Amount {
+                            commodity: "USD".to_string(),
+                            quantity: Quantity(Decimal::new(12, 1)),
+                            style: AmountStyle {
+                                commodity_side: Side::Right,
+                                spaced: true,
+                                precision: 1,
+                                decimal_point: Some('.'),
+                                digit_groups: None,
+                            },
+                            price: Box::new(None),
+                        }))),
+                    }),
+                ),
+            ]
+            .into_iter()
+            .for_each(|(raw, expected)| {
+                assert_eq!(raw.parse::<Amount>(), expected, "failed to parse {}", raw);
+            });
+        }
 
-    #[test]
-    fn test_amount_display() {
-        vec![
-            (
-                Amount {
-                    commodity: "SEK".to_string(),
-                    quantity: Quantity(Decimal::new(1200000, 2)),
-                    style: AmountStyle {
-                        commodity_side: Side::Right,
-                        spaced: true,
-                        precision: 2,
-                        decimal_point: Some('.'),
-                        digit_groups: Some(DigitGroupStyle((',', vec![3]))),
+        #[test]
+        fn display() {
+            vec![
+                (
+                    Amount {
+                        commodity: "SEK".to_string(),
+                        quantity: Quantity(Decimal::new(1200000, 2)),
+                        style: AmountStyle {
+                            commodity_side: Side::Right,
+                            spaced: true,
+                            precision: 2,
+                            decimal_point: Some('.'),
+                            digit_groups: Some(DigitGroupStyle((',', vec![3]))),
+                        },
+                        price: Box::new(None),
                     },
-                    price: Box::new(None),
-                },
-                "12,000.00 SEK",
-            ),
-            (
-                Amount {
-                    commodity: "SEK".to_string(),
-                    quantity: Quantity(Decimal::new(-100, 0)),
-                    style: AmountStyle {
-                        commodity_side: Side::Right,
-                        spaced: true,
-                        precision: 0,
-                        decimal_point: None,
-                        digit_groups: None,
+                    "12,000.00 SEK",
+                ),
+                (
+                    Amount {
+                        commodity: "SEK".to_string(),
+                        quantity: Quantity(Decimal::new(-100, 0)),
+                        style: AmountStyle {
+                            commodity_side: Side::Right,
+                            spaced: true,
+                            precision: 0,
+                            decimal_point: None,
+                            digit_groups: None,
+                        },
+                        price: Box::new(None),
                     },
-                    price: Box::new(None),
-                },
-                "-100 SEK",
-            ),
-            (
-                Amount {
-                    commodity: "SEK".to_string(),
-                    quantity: Quantity(Decimal::new(-1200000, 2)),
-                    style: AmountStyle {
-                        commodity_side: Side::Right,
-                        spaced: true,
-                        precision: 2,
-                        decimal_point: Some('.'),
-                        digit_groups: Some(DigitGroupStyle((',', vec![3]))),
+                    "-100 SEK",
+                ),
+                (
+                    Amount {
+                        commodity: "SEK".to_string(),
+                        quantity: Quantity(Decimal::new(-1200000, 2)),
+                        style: AmountStyle {
+                            commodity_side: Side::Right,
+                            spaced: true,
+                            precision: 2,
+                            decimal_point: Some('.'),
+                            digit_groups: Some(DigitGroupStyle((',', vec![3]))),
+                        },
+                        price: Box::new(None),
                     },
-                    price: Box::new(None),
-                },
-                "-12,000.00 SEK",
-            ),
-            (
-                Amount {
-                    commodity: "SEK".to_string(),
-                    quantity: Quantity(Decimal::new(-30000, 2)),
-                    style: AmountStyle {
-                        commodity_side: Side::Right,
-                        spaced: true,
-                        precision: 2,
-                        decimal_point: Some('.'),
-                        digit_groups: Some(DigitGroupStyle((',', vec![3]))),
+                    "-12,000.00 SEK",
+                ),
+                (
+                    Amount {
+                        commodity: "SEK".to_string(),
+                        quantity: Quantity(Decimal::new(-30000, 2)),
+                        style: AmountStyle {
+                            commodity_side: Side::Right,
+                            spaced: true,
+                            precision: 2,
+                            decimal_point: Some('.'),
+                            digit_groups: Some(DigitGroupStyle((',', vec![3]))),
+                        },
+                        price: Box::new(None),
                     },
-                    price: Box::new(None),
-                },
-                "-300.00 SEK",
-            ),
-            (
-                Amount {
-                    commodity: "SEK".to_string(),
-                    quantity: Quantity(Decimal::new(-123456, 4)),
-                    style: AmountStyle {
-                        commodity_side: Side::Right,
-                        spaced: true,
-                        precision: 2,
-                        decimal_point: Some('.'),
-                        digit_groups: Some(DigitGroupStyle((',', vec![3]))),
+                    "-300.00 SEK",
+                ),
+                (
+                    Amount {
+                        commodity: "SEK".to_string(),
+                        quantity: Quantity(Decimal::new(-123456, 4)),
+                        style: AmountStyle {
+                            commodity_side: Side::Right,
+                            spaced: true,
+                            precision: 2,
+                            decimal_point: Some('.'),
+                            digit_groups: Some(DigitGroupStyle((',', vec![3]))),
+                        },
+                        price: Box::new(None),
                     },
-                    price: Box::new(None),
-                },
-                "-12.35 SEK",
-            ),
-            (
-                Amount {
-                    commodity: "SEK".to_string(),
-                    quantity: Quantity(Decimal::new(-12, 0)),
-                    style: AmountStyle {
-                        commodity_side: Side::Right,
-                        spaced: true,
-                        precision: 2,
-                        decimal_point: Some('.'),
-                        digit_groups: Some(DigitGroupStyle((',', vec![3]))),
+                    "-12.35 SEK",
+                ),
+                (
+                    Amount {
+                        commodity: "SEK".to_string(),
+                        quantity: Quantity(Decimal::new(-12, 0)),
+                        style: AmountStyle {
+                            commodity_side: Side::Right,
+                            spaced: true,
+                            precision: 2,
+                            decimal_point: Some('.'),
+                            digit_groups: Some(DigitGroupStyle((',', vec![3]))),
+                        },
+                        price: Box::new(None),
                     },
-                    price: Box::new(None),
-                },
-                "-12.00 SEK",
-            ),
-        ]
-        .into_iter()
-        .for_each(|(amount, expected)| {
-            assert_eq!(format!("{}", amount), expected);
-        });
+                    "-12.00 SEK",
+                ),
+            ]
+            .into_iter()
+            .for_each(|(amount, expected)| {
+                assert_eq!(format!("{}", amount), expected);
+            });
+        }
     }
 }
 
@@ -776,6 +992,57 @@ impl From<Vec<Amount>> for MixedAmount {
 impl MixedAmount {
     pub fn iter(&self) -> impl Iterator<Item = &Amount> {
         self.0.iter()
+    }
+}
+
+impl PartialEq for MixedAmount {
+    fn eq(&self, other: &Self) -> bool {
+        self.0
+            .iter()
+            .all(|amount| other.0.iter().any(|other_amount| amount == other_amount))
+    }
+}
+
+impl ops::Add for MixedAmount {
+    type Output = Self;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        self.0
+            .into_iter()
+            .chain(rhs.0.into_iter())
+            .fold(Vec::<Amount>::new(), |mut result, amount| {
+                if let Some(index) = result.iter().position(|a| a.commodity == amount.commodity) {
+                    result[index].quantity = result[index].quantity + amount.quantity;
+                    result
+                } else {
+                    result.push(amount.clone());
+                    result
+                }
+            })
+            .into()
+    }
+}
+
+impl ops::Sub for MixedAmount {
+    type Output = Self;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        self.0
+            .into_iter()
+            .chain(rhs.0.into_iter())
+            .fold(Vec::<Amount>::new(), |mut result, amount| {
+                if let Some(index) = result.iter().position(|a| a.commodity == amount.commodity) {
+                    result[index].quantity = result[index].quantity - amount.quantity;
+                    if result[index].quantity.0.is_zero() {
+                        result.remove(index);
+                    }
+                    result
+                } else {
+                    result.push(amount.clone());
+                    result
+                }
+            })
+            .into()
     }
 }
 

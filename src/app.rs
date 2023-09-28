@@ -4,10 +4,7 @@ use tauri_egui::{
     egui::{Context, FontDefinitions},
 };
 
-use crate::{
-    state::{State, Update},
-    ui::show,
-};
+use crate::frame::{actions::app::Action, render, state::app::State};
 
 pub struct App {
     handle: AppHandle,
@@ -22,18 +19,18 @@ impl App {
         cc.egui_ctx.set_fonts(fonts);
 
         let state = State::try_from(&handle).unwrap_or_default();
-        cc.egui_ctx.set_visuals(state.theme().into());
+        cc.egui_ctx.set_visuals(state.theme.into());
         Self { state, handle }
     }
 }
 
 impl tauri_egui::eframe::App for App {
     fn update(&mut self, ctx: &Context, frame: &mut tauri_egui::eframe::Frame) {
-        let before_render_updates = &[Update::frame_history(
+        let before_render_updates = &[Action::frame_history(
             ctx.input(|i| i.time),
             frame.info().cpu_usage,
         )];
-        let render_updates = show(ctx, &self.state);
+        let render_updates = render(ctx, &self.state);
 
         let all_updates = before_render_updates
             .iter()
@@ -43,11 +40,11 @@ impl tauri_egui::eframe::App for App {
         let should_save = all_updates
             .iter()
             .fold(false, |should_save, update| match update {
-                Update::Persistent(update) => {
+                Action::Persistent(update) => {
                     update(&self.handle, &mut self.state);
                     true
                 }
-                Update::Ephemeral(update) => {
+                Action::Ephemeral(update) => {
                     update(&self.handle, &mut self.state);
                     should_save
                 }

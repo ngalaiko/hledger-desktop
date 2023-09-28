@@ -1,8 +1,7 @@
 mod app;
 mod converter;
+mod frame;
 mod hledger;
-mod state;
-mod ui;
 mod widgets;
 
 use std::fs;

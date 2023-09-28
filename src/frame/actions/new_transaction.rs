@@ -1,137 +1,17 @@
 use std::{collections::HashSet, path};
 
-use chrono::{Local, NaiveDate};
+use chrono::NaiveDate;
 use poll_promise::Promise;
 use tauri::Manager;
 
 use crate::{
+    frame::state::new_transaction::{Error, PostingState, State},
     hledger::{self, MixedAmount},
-    state::update::StateUpdate,
 };
 
-pub struct State {
-    creating: Option<Promise<Result<(), hledger::Error>>>,
+use super::action::StateAction;
 
-    date: NaiveDate,
-    description: String,
-    postings: Vec<PostingState>,
-    parsed_postings: Result<Vec<hledger::Posting>, Error>,
-    destination: path::PathBuf,
-
-    suggestions: Suggestions,
-}
-
-impl From<&Vec<hledger::Transaction>> for State {
-    fn from(value: &Vec<hledger::Transaction>) -> Self {
-        let suggestions = Suggestions::from(value);
-        Self {
-            creating: None,
-
-            date: value
-                .last()
-                .map(|t| t.date)
-                .unwrap_or_else(|| Local::now().date_naive()),
-            description: String::new(),
-            postings: vec![PostingState::default()],
-            parsed_postings: Err(Error::InvalidPostings),
-            destination: value
-                .last()
-                .map(|t| t.source_position.0.file_name.clone())
-                .unwrap_or_else(|| {
-                    suggestions
-                        .destinations
-                        .first()
-                        .expect("at least one destination is always present")
-                        .clone()
-                }),
-            suggestions,
-        }
-    }
-}
-
-impl State {
-    pub fn is_loading(&self) -> bool {
-        self.creating
-            .as_ref()
-            .map_or(false, |p| p.ready().is_none())
-    }
-
-    pub fn result(&self) -> Option<&Result<(), hledger::Error>> {
-        self.creating.as_ref().and_then(|p| p.ready())
-    }
-
-    pub fn date(&self) -> &NaiveDate {
-        &self.date
-    }
-
-    pub fn description(&self) -> &str {
-        &self.description
-    }
-
-    pub fn suggestions(&self) -> &Suggestions {
-        &self.suggestions
-    }
-
-    pub fn postings(&self) -> &[PostingState] {
-        &self.postings
-    }
-
-    pub fn parsed_postings(&self) -> &Result<Vec<hledger::Posting>, Error> {
-        &self.parsed_postings
-    }
-
-    pub fn destination(&self) -> &path::Path {
-        &self.destination
-    }
-}
-
-#[derive(Debug, thiserror::Error)]
-pub enum Error {
-    #[error("invalid postings")]
-    InvalidPostings,
-    #[error("only one empty amount is allowed")]
-    TooManyEmptyAmounts,
-    #[error("unbalanced posting")]
-    Unbalanced(MixedAmount),
-}
-
-pub struct PostingState {
-    account: String,
-    parsed_account: Result<hledger::AccountName, hledger::ParseAccountNameError>,
-    amount: String,
-    parsed_amount: Result<hledger::Amount, hledger::ParseAmountError>,
-}
-
-impl Default for PostingState {
-    fn default() -> Self {
-        Self {
-            account: String::new(),
-            parsed_account: Err(hledger::ParseAccountNameError::Empty),
-            amount: String::new(),
-            parsed_amount: Err(hledger::ParseAmountError::Empty),
-        }
-    }
-}
-
-impl PostingState {
-    pub fn account(&self) -> &str {
-        &self.account
-    }
-
-    pub fn amount(&self) -> &str {
-        &self.amount
-    }
-
-    pub fn parsed_amount(&self) -> &Result<hledger::Amount, hledger::ParseAmountError> {
-        &self.parsed_amount
-    }
-
-    fn is_empty(&self) -> bool {
-        self.account.is_empty() && self.amount.is_empty()
-    }
-}
-
-pub type Update = StateUpdate<State>;
+pub type Update = StateAction<State>;
 
 impl Update {
     pub fn set_date(date: &NaiveDate) -> Self {

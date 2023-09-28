@@ -10,16 +10,19 @@ use tauri_egui::egui::{
 
 use crate::{
     hledger,
-    state::{
-        tab::{
-            new_transaction::{
-                Error as NewTransactionStateError, Update as NewTransactionStateUpdate,
-            },
-            AccountTreeNode, State as TabState, Update as TabStateUpdate,
-        },
-        RenderMode, State, Theme, Update as StateUpdate,
-    },
     widgets::{checkbox, CheckboxState},
+};
+
+use super::{
+    actions::{
+        app::Action as StateUpdate, new_transaction::Update as NewTransactionStateUpdate,
+        tab::Update as TabStateUpdate,
+    },
+    state::{
+        app::{RenderMode, State, Theme},
+        new_transaction::Error as NewTransactionStateError,
+        tab::{AccountTreeNode, State as TabState},
+    },
 };
 
 pub fn show(ctx: &Context, state: &State) -> Vec<StateUpdate> {
@@ -48,9 +51,9 @@ pub fn show(ctx: &Context, state: &State) -> Vec<StateUpdate> {
     });
 
     CentralPanel::default().show(ctx, |ui| {
-        if let Some(active_tab_index) = state.active_tab_index() {
+        if let Some(active_tab_index) = state.active_tab_index {
             let active_tab = state
-                .tabs()
+                .tabs
                 .get(active_tab_index)
                 .expect("active tab index is valid");
             for update in tab_ui(ui, active_tab) {
@@ -138,9 +141,9 @@ fn account_tree_node_ui(ui: &mut Ui, node: &AccountTreeNode) -> Vec<TabStateUpda
 
 fn tab_ui(ui: &mut Ui, tab_state: &TabState) -> Vec<TabStateUpdate> {
     match (
-        tab_state.accounts_tree(),
-        tab_state.transactions(),
-        tab_state.commodities(),
+        tab_state.accounts_tree.as_ref(),
+        tab_state.transactions.as_ref(),
+        tab_state.commodities.as_ref(),
     ) {
         (Some(account_trees), Some(transactions), Some(commodities)) => {
             match (
@@ -245,7 +248,8 @@ fn display_commodity_ui(
 
     ui.horizontal(|ui| {
         let mut display_commodity = tab_state
-            .display_commodity()
+            .display_commodity
+            .as_ref()
             .map(|c| c.to_string())
             .unwrap_or("-".to_string());
 
@@ -268,8 +272,7 @@ fn display_commodity_ui(
                 }
             });
 
-        if tab_state.display_commodity().is_some() && ui.button(egui_phosphor::regular::X).clicked()
-        {
+        if tab_state.display_commodity.is_some() && ui.button(egui_phosphor::regular::X).clicked() {
             update.replace(TabStateUpdate::set_display_commodity(None));
         }
     });
@@ -279,7 +282,8 @@ fn display_commodity_ui(
 
 fn new_transaction_modal_ui(ui: &mut Ui, tab_state: &TabState) -> Vec<TabStateUpdate> {
     tab_state
-        .new_transaction_modal_state()
+        .new_transaction_modal_state
+        .as_ref()
         .map(|state| {
             let mut updates = vec![];
             let new_transaction_modal =
@@ -287,9 +291,8 @@ fn new_transaction_modal_ui(ui: &mut Ui, tab_state: &TabState) -> Vec<TabStateUp
 
             new_transaction_modal.show(|ui| {
                 ui.vertical(|ui| {
-                    let suggestions = state.suggestions();
                     ui.horizontal(|ui| {
-                        let mut date = *state.date();
+                        let mut date = state.date;
                         if ui
                             .add(DatePickerButton::new(&mut date).calendar_week(true))
                             .changed()
@@ -297,43 +300,51 @@ fn new_transaction_modal_ui(ui: &mut Ui, tab_state: &TabState) -> Vec<TabStateUp
                             updates.push(NewTransactionStateUpdate::set_date(&date).into())
                         }
 
-                        let mut description = state.description().to_string();
+                        let mut description = state.description.to_string();
                         ui.add(
-                            AutoCompleteTextEdit::new(&mut description, &suggestions.descriptions)
-                                .highlight_matches(true)
-                                .set_text_edit_properties(|text_edit| {
-                                    text_edit.hint_text("description")
-                                }),
+                            AutoCompleteTextEdit::new(
+                                &mut description,
+                                &state.suggestions.descriptions,
+                            )
+                            .highlight_matches(true)
+                            .set_text_edit_properties(|text_edit| {
+                                text_edit.hint_text("description")
+                            }),
                         );
                         updates
                             .push(NewTransactionStateUpdate::set_description(&description).into());
                     });
 
                     let is_loading = state.is_loading();
-                    for (i, posting) in state.postings().iter().enumerate() {
+                    for (i, posting) in state.postings.iter().enumerate() {
                         ui.horizontal(|ui| {
-                            let mut account = posting.account().to_string();
+                            let mut account = posting.account.to_string();
                             ui.add(
-                                AutoCompleteTextEdit::new(&mut account, &suggestions.account_names)
-                                    .highlight_matches(true)
-                                    .max_suggestions(5)
-                                    .set_text_edit_properties(move |text_edit| {
+                                AutoCompleteTextEdit::new(
+                                    &mut account,
+                                    &state.suggestions.account_names,
+                                )
+                                .highlight_matches(true)
+                                .max_suggestions(5)
+                                .set_text_edit_properties(
+                                    move |text_edit| {
                                         text_edit
                                             .hint_text(format!("account {}", i + 1))
                                             .interactive(!is_loading)
-                                    }),
+                                    },
+                                ),
                             );
                             updates.push(
                                 NewTransactionStateUpdate::set_posting_account(i, &account).into(),
                             );
 
-                            let mut amount = posting.amount().to_string();
+                            let mut amount = posting.amount.to_string();
                             if ui
                                 .add(
                                     TextEdit::singleline(&mut amount)
                                         .interactive(!is_loading)
                                         .hint_text(format!("amount {}", i + 1))
-                                        .text_color(if posting.parsed_amount().is_ok() {
+                                        .text_color(if posting.parsed_amount.is_ok() {
                                             ui.visuals().widgets.inactive.text_color()
                                         } else {
                                             ui.style().visuals.error_fg_color
@@ -350,7 +361,7 @@ fn new_transaction_modal_ui(ui: &mut Ui, tab_state: &TabState) -> Vec<TabStateUp
                     }
 
                     ui.horizontal(|ui| {
-                        let mut selected_destination = state.destination().clone();
+                        let mut selected_destination = state.destination.clone();
                         ComboBox::from_id_source("destination file")
                             .selected_text(
                                 selected_destination
@@ -361,11 +372,11 @@ fn new_transaction_modal_ui(ui: &mut Ui, tab_state: &TabState) -> Vec<TabStateUp
                                     .to_string(),
                             )
                             .show_ui(ui, |ui| {
-                                for destination in &suggestions.destinations {
+                                for destination in &state.suggestions.destinations {
                                     if ui
                                         .selectable_value(
                                             &mut selected_destination,
-                                            destination,
+                                            destination.to_path_buf(),
                                             destination
                                                 .file_name()
                                                 .unwrap()
@@ -377,7 +388,7 @@ fn new_transaction_modal_ui(ui: &mut Ui, tab_state: &TabState) -> Vec<TabStateUp
                                     {
                                         updates.push(
                                             NewTransactionStateUpdate::set_destination(
-                                                selected_destination,
+                                                &selected_destination,
                                             )
                                             .into(),
                                         );
@@ -388,13 +399,15 @@ fn new_transaction_modal_ui(ui: &mut Ui, tab_state: &TabState) -> Vec<TabStateUp
                         ui.with_layout(Layout::right_to_left(Align::Min), |ui| {
                             if is_loading {
                                 ui.spinner();
-                            } else if let Some(Ok(())) = state.result() {
+                            } else if let Some(Ok(())) =
+                                state.creating.as_ref().and_then(|p| p.ready())
+                            {
                                 updates.extend(vec![
                                     TabStateUpdate::close_new_transaction_modal(),
                                     TabStateUpdate::reload_transactions(),
                                 ]);
                             } else {
-                                match state.parsed_postings() {
+                                match state.parsed_postings.as_ref() {
                                     Err(NewTransactionStateError::InvalidPostings) => {
                                         ui.add_enabled(false, Button::new("add"));
                                     }
@@ -407,14 +420,14 @@ fn new_transaction_modal_ui(ui: &mut Ui, tab_state: &TabState) -> Vec<TabStateUp
                                     Ok(postings) => {
                                         if ui.button("add").clicked() {
                                             let tx = hledger::Transaction {
-                                                date: *state.date(),
-                                                description: state.description().to_string(),
+                                                date: state.date,
+                                                description: state.description.to_string(),
                                                 postings: postings.to_vec(),
                                                 ..Default::default()
                                             };
                                             updates.push(
                                                 NewTransactionStateUpdate::create_transaction(
-                                                    state.destination(),
+                                                    &state.destination,
                                                     &tx,
                                                 )
                                                 .into(),
@@ -465,8 +478,8 @@ fn tabs_list(ui: &mut Ui, state: &State) -> Vec<StateUpdate> {
         let mut new_selected = None;
         let mut deleted = vec![];
 
-        for (tab_index, tab) in state.tabs().iter().enumerate() {
-            let is_selected = state.active_tab_index() == Some(tab_index);
+        for (tab_index, tab) in state.tabs.iter().enumerate() {
+            let is_selected = state.active_tab_index == Some(tab_index);
             if ui
                 .selectable_label(is_selected, tab.name())
                 .context_menu(|ui| {
@@ -481,7 +494,7 @@ fn tabs_list(ui: &mut Ui, state: &State) -> Vec<StateUpdate> {
             }
         }
 
-        if !state.tabs().is_empty()
+        if !state.tabs.is_empty()
             && ui
                 .button(egui_phosphor::regular::PLUS)
                 .on_hover_text("Open new file")
@@ -505,7 +518,7 @@ fn tabs_list(ui: &mut Ui, state: &State) -> Vec<StateUpdate> {
 }
 
 fn dark_light_mode_switch_ui(ui: &mut Ui, state: &State) -> Option<StateUpdate> {
-    let new_theme = match state.theme() {
+    let new_theme = match state.theme {
         Theme::Light => {
             if ui
                 .add(Button::new(egui_phosphor::regular::MOON).frame(false))
@@ -539,7 +552,7 @@ fn dark_light_mode_switch_ui(ui: &mut Ui, state: &State) -> Option<StateUpdate> 
 }
 
 fn render_mode_ui(ui: &mut Ui, state: &State) -> Option<StateUpdate> {
-    match state.render_mode() {
+    match state.render_mode {
         RenderMode::Continious => {
             ui.ctx().request_repaint();
             if ui
@@ -569,8 +582,8 @@ fn render_mode_ui(ui: &mut Ui, state: &State) -> Option<StateUpdate> {
 fn frames_per_second_ui(ui: &mut Ui, state: &State) {
     ui.label(format!(
         "FPS: {:.1} ({:.2} ms / frame)",
-        state.frames_per_second(),
-        1e3 * state.frame_mean_time(),
+        state.frames.per_second(),
+        1e3 * state.frames.mean_time(),
     ))
     .on_hover_text(
         "Includes egui layout and tessellation time.\n\

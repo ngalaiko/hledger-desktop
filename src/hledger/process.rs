@@ -20,7 +20,7 @@ pub enum Error {
     #[error("failed to spawn hledger-web")]
     FailedToSpawn(Arc<tauri_plugin_shell::Error>),
     #[error("failed to stop hledger-web")]
-    FailedToStop,
+    FailedToStop(Arc<tauri_plugin_shell::Error>),
     #[error("{0}")]
     CommandEvent(String),
     #[error("hledger-web terminated")]
@@ -78,16 +78,18 @@ impl HLedgerWeb {
                     }
                     Ok((mut rx, child)) => loop {
                         select! {
-                            _ = c_cancel_token.cancelled() => {
-                                if child.kill().is_err() {
-                                    send_state(State::Stopped(Some(Error::FailedToStop)));
-                                    return Err(Error::FailedToStop);
-                                } else {
+                            _ = c_cancel_token.cancelled() => match child.kill() {
+                                Ok(()) => {
                                     send_state(State::Stopped(None));
                                     return Ok(());
                                 }
-                            }
-                            Some(event) = rx.recv() =>  match event {
+                                Err(error) => {
+                                    let error = Arc::new(error);
+                                    send_state(State::Stopped(Some(Error::FailedToStop(error.clone()))));
+                                    return Err(Error::FailedToStop(error));
+                                }
+                            },
+                            Some(event) = rx.recv() => match event {
                                 CommandEvent::Stdout(line) => {
                                     let line = str::from_utf8(&line).unwrap();
                                     tracing::debug!(line);

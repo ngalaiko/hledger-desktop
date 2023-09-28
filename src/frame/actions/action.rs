@@ -7,6 +7,12 @@ pub enum StateAction<T> {
     Ephemeral(StateUpdateFn<T>),
 }
 
+impl<T> Default for StateAction<T> {
+    fn default() -> Self {
+        Self::Ephemeral(Box::new(|_, _| {}))
+    }
+}
+
 impl<T: 'static> StateAction<T> {
     pub fn and_then(self, other: StateAction<T>) -> StateAction<T> {
         match (self, other) {

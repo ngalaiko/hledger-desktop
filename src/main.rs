@@ -10,8 +10,11 @@ use tauri::{AppHandle, Manager};
 
 use app::App;
 
+use tauri_egui::egui::vec2;
 use tracing::{metadata::LevelFilter, subscriber::set_global_default};
 use tracing_subscriber::{fmt::format::FmtSpan, layer::SubscriberExt, Layer};
+
+use crate::frame::state::app::State;
 
 #[tokio::main]
 async fn main() {
@@ -26,9 +29,14 @@ async fn main() {
 
             app.wry_plugin(tauri_egui::EguiPluginBuilder::new(app.handle()));
 
+            let state = State::try_from(&handle).unwrap_or_default();
+
             let native_options = tauri_egui::eframe::NativeOptions {
+                initial_window_size: Some(vec2(state.window.size[0], state.window.size[1])),
+                initial_window_pos: state.window.position.map(|p| p.into()),
+                fullscreen: state.window.fullscreen,
+                maximized: state.window.maximized,
                 drag_and_drop_support: true,
-                initial_window_size: Some([800.0, 600.0].into()),
                 icon_data: None,
                 #[cfg(target_os = "macos")]
                 fullsize_content: true,
@@ -41,7 +49,7 @@ async fn main() {
             app.state::<tauri_egui::EguiPluginHandle>()
                 .create_window(
                     "main".to_string(),
-                    Box::new(|cc| Box::new(App::new(cc, handle))),
+                    Box::new(|cc| Box::new(App::new(cc, handle, state))),
                     "hledger-desktop".into(),
                     native_options,
                 )

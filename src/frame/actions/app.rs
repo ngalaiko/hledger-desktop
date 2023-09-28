@@ -1,7 +1,7 @@
 use std::path;
 
 use crate::frame::state::{
-    app::{RenderMode, State, Theme},
+    app::{RenderMode, State, Theme, WindowInfo},
     tab as tab_state,
 };
 
@@ -10,6 +10,13 @@ use super::{action::StateAction, tab};
 pub type Action = StateAction<State>;
 
 impl Action {
+    pub fn window(window_info: &WindowInfo) -> Self {
+        let info = window_info.clone();
+        Action::Persistent(Box::new(move |_, state| {
+            state.window = info.clone();
+        }))
+    }
+
     pub fn frame_history(now: f64, previous_frame_time: Option<f32>) -> Self {
         Action::Ephemeral(Box::new(move |_, state| {
             state.frames.on_new_frame(now, previous_frame_time);

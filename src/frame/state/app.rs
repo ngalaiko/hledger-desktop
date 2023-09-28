@@ -15,6 +15,7 @@ pub struct State {
     pub tabs: Vec<tab::State>,
     pub active_tab_index: Option<usize>,
     pub theme: Theme,
+    pub window: WindowInfo,
 
     #[serde(skip)]
     pub frames: Frames,
@@ -141,4 +142,23 @@ pub enum Theme {
     #[default]
     Dark,
     Light,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct WindowInfo {
+    pub position: Option<[f32; 2]>,
+    pub size: [f32; 2],
+    pub fullscreen: bool,
+    pub maximized: bool,
+}
+
+impl Default for WindowInfo {
+    fn default() -> Self {
+        Self {
+            position: None,
+            size: [800.0, 600.0],
+            fullscreen: false,
+            maximized: false,
+        }
+    }
 }

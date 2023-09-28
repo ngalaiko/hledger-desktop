@@ -1,9 +1,12 @@
 use std::fs;
 
+use poll_promise::Promise;
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Manager};
 use tauri_egui::egui::util::History;
 use tracing::instrument;
+
+use crate::hledger::{version, ExecError};
 
 use super::tab;
 
@@ -17,6 +20,8 @@ pub struct State {
     pub frames: Frames,
     #[serde(skip)]
     pub render_mode: RenderMode,
+    #[serde(skip)]
+    pub hledger_version: Option<Promise<Result<String, ExecError>>>,
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -49,11 +54,30 @@ impl TryFrom<&AppHandle> for State {
     type Error = StateError;
 
     fn try_from(value: &AppHandle) -> Result<Self, Self::Error> {
-        Self::load(value)
+        let state = Self::load(value)?;
+        Ok(State {
+            hledger_version: Some(Promise::spawn_async({
+                let handle = value.clone();
+                async move { version(&handle).await }
+            })),
+            ..state
+        })
     }
 }
 
 impl State {
+    pub fn version(&self) -> String {
+        if let Some(version) = self.hledger_version.as_ref() {
+            if let Some(Ok(version)) = version.ready() {
+                version.to_string()
+            } else {
+                "".to_string()
+            }
+        } else {
+            "".to_string()
+        }
+    }
+
     #[instrument(skip_all)]
     pub fn save(&self, handle: &AppHandle) -> Result<(), StateError> {
         let local_data_dir = handle.path().app_local_data_dir()?;

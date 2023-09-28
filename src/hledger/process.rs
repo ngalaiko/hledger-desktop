@@ -15,8 +15,10 @@ use url::Url;
 pub enum Error {
     #[error("hledger-web not found")]
     NotFound,
+    #[error("failed to execute hledger-web: {code:?}: {message:?}")]
+    Exec { code: Option<i32>, message: Vec<u8> },
     #[error("failed to spawn hledger-web")]
-    FailedToSpawn,
+    FailedToSpawn(Arc<tauri_plugin_shell::Error>),
     #[error("failed to stop hledger-web")]
     FailedToStop,
     #[error("{0}")]
@@ -117,7 +119,7 @@ impl HLedgerWeb {
             match state_rx.borrow().clone() {
                 State::Starting => continue,
                 State::Running => break,
-                State::Stopped(error) => return Err(error.unwrap_or(Error::FailedToSpawn)),
+                State::Stopped(error) => error.map_or(Ok(()), Err)?,
             }
         }
 
@@ -176,17 +178,34 @@ async fn spawn(
         .args(args)
         .spawn()
         .map_err(|error| match error {
-            tauri_plugin_shell::Error::Io(error) => {
-                if error.kind() == io::ErrorKind::NotFound {
+            tauri_plugin_shell::Error::Io(ref io_error) => {
+                if io_error.kind() == io::ErrorKind::NotFound {
                     Error::NotFound
                 } else {
-                    tracing::error!(?error);
-                    Error::FailedToSpawn
+                    Error::FailedToSpawn(Arc::new(error))
                 }
             }
-            error => {
-                tracing::error!(?error);
-                Error::FailedToSpawn
-            }
+            error => Error::FailedToSpawn(Arc::new(error)),
         })
+}
+
+#[instrument(skip(handle))]
+pub async fn exec(handle: &AppHandle, args: &[&str]) -> Result<Vec<u8>, Error> {
+    let output = handle
+        .shell()
+        .sidecar("hledger-web")
+        .expect("sidecar is always present")
+        .args(args)
+        .output()
+        .await
+        .map_err(|error| Error::FailedToSpawn(Arc::new(error)))?;
+
+    if output.status.success() {
+        Ok(output.stdout)
+    } else {
+        Err(Error::Exec {
+            code: output.status.code(),
+            message: output.stderr,
+        })
+    }
 }

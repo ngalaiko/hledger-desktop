@@ -48,11 +48,20 @@ pub fn show(ctx: &Context, state: &State) -> Vec<StateUpdate> {
     });
 
     TopBottomPanel::bottom("botttom_bar").show(ctx, |ui| {
-        ui.with_layout(Layout::right_to_left(Align::Min), |ui| {
-            if let Some(update) = render_mode_ui(ui, state) {
-                updates.push(update)
+        ui.horizontal(|ui| {
+            ui.add(Label::new(state.version()).wrap(false));
+
+            if cfg!(debug_assertions) {
+                ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                    if let Some(update) = render_mode_ui(ui, state) {
+                        updates.push(update)
+                    }
+
+                    frames_per_second_ui(ui, state);
+
+                    ui.separator();
+                });
             }
-            frames_per_second_ui(ui, state);
         });
     });
 

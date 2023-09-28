@@ -29,6 +29,9 @@ async fn main() {
             let native_options = tauri_egui::eframe::NativeOptions {
                 drag_and_drop_support: true,
                 initial_window_size: Some([800.0, 600.0].into()),
+                icon_data: None,
+                #[cfg(target_os = "macos")]
+                fullsize_content: true,
                 ..Default::default()
             };
 

@@ -4,8 +4,9 @@ use egui_autocomplete::AutoCompleteTextEdit;
 use egui_extras::{Column, DatePickerButton, TableBuilder};
 use egui_modal::Modal;
 use tauri_egui::egui::{
-    collapsing_header, Align, Button, CentralPanel, ComboBox, Context, Hyperlink, Id, Label,
-    Layout, RichText, ScrollArea, SidePanel, TextEdit, TextStyle, TopBottomPanel, Ui, Visuals,
+    collapsing_header, vec2, Align, Button, CentralPanel, ComboBox, Context, Hyperlink, Id, Label,
+    Layout, RichText, ScrollArea, Sense, SidePanel, TextEdit, TextStyle, TopBottomPanel, Ui,
+    Visuals,
 };
 
 use crate::{
@@ -30,15 +31,20 @@ pub fn show(ctx: &Context, state: &State) -> Vec<StateUpdate> {
 
     TopBottomPanel::top("top_bar").show(ctx, |ui| {
         ui.horizontal(|ui| {
+            if cfg!(target_os = "macos") {
+                macos_traffic_lights_box_ui(ui);
+                ui.separator();
+            }
+
             updates.extend(tabs_list(ui, state));
 
-            ui.with_layout(Layout::right_to_left(Align::Min), |ui| {
+            ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                 if let Some(update) = dark_light_mode_switch_ui(ui, state) {
                     updates.push(update);
                 }
                 ui.separator();
             });
-        })
+        });
     });
 
     TopBottomPanel::bottom("botttom_bar").show(ctx, |ui| {
@@ -521,7 +527,7 @@ fn dark_light_mode_switch_ui(ui: &mut Ui, state: &State) -> Option<StateUpdate> 
     let new_theme = match state.theme {
         Theme::Light => {
             if ui
-                .add(Button::new(egui_phosphor::regular::MOON).frame(false))
+                .add(Label::new(egui_phosphor::regular::MOON).sense(Sense::click()))
                 .on_hover_text("Switch to dark mode")
                 .clicked()
             {
@@ -532,7 +538,7 @@ fn dark_light_mode_switch_ui(ui: &mut Ui, state: &State) -> Option<StateUpdate> 
         }
         Theme::Dark => {
             if ui
-                .add(Button::new(egui_phosphor::regular::SUN).frame(false))
+                .add(Label::new(egui_phosphor::regular::SUN).sense(Sense::click()))
                 .on_hover_text("Switch to light mode")
                 .clicked()
             {
@@ -683,4 +689,8 @@ fn transactions_ui(ui: &mut Ui, transactions: &[hledger::Transaction]) {
                 });
             });
         });
+}
+
+fn macos_traffic_lights_box_ui(ui: &mut Ui) {
+    ui.allocate_exact_size(vec2(50.0, 25.0), Sense::click());
 }

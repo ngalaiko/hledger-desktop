@@ -1127,9 +1127,7 @@ impl From<Vec<Amount>> for MixedAmount {
 }
 
 impl MixedAmount {
-    pub fn zero() -> Self {
-        Self(vec![])
-    }
+    pub const ZERO: MixedAmount = Self(vec![]);
 
     pub fn negate(&self) -> Self {
         Self(self.0.iter().map(Amount::negate).collect())
@@ -1154,7 +1152,7 @@ impl PartialEq for MixedAmount {
 
 impl Sum for MixedAmount {
     fn sum<I: Iterator<Item = Self>>(iter: I) -> Self {
-        iter.fold(Self::zero(), |mut result, amount| {
+        iter.fold(Self::ZERO, |mut result, amount| {
             result = result + amount;
             result
         })

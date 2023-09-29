@@ -1,9 +1,9 @@
-use std::{io, path, str, sync::Arc};
+use std::{fmt, io, path, str, sync::Arc};
 
 use rand::Rng;
 use tauri::{async_runtime, AppHandle};
 use tauri_plugin_shell::{
-    process::{CommandChild, CommandEvent, TerminatedPayload},
+    process::{CommandChild, CommandEvent},
     ShellExt,
 };
 use tokio::{select, sync::watch};
@@ -17,14 +17,18 @@ pub enum Error {
     NotFound,
     #[error("failed to execute hledger-web: {code:?}: {message:?}")]
     Exec { code: Option<i32>, message: Vec<u8> },
-    #[error("failed to spawn hledger-web")]
+    #[error("failed to spawn hledger-web: {0}")]
     FailedToSpawn(Arc<tauri_plugin_shell::Error>),
-    #[error("failed to stop hledger-web")]
+    #[error("failed to stop hledger-web: {0}")]
     FailedToStop(Arc<tauri_plugin_shell::Error>),
     #[error("{0}")]
     CommandEvent(String),
-    #[error("hledger-web terminated")]
-    Terminated(TerminatedPayload),
+    #[error("hledger-web terminated. code: {code:?}, signal: {signal:?}")]
+    Terminated {
+        code: Option<i32>,
+        signal: Option<i32>,
+        message: Vec<u8>,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -32,6 +36,17 @@ pub enum State {
     Starting,
     Running,
     Stopped(Option<Error>),
+}
+
+impl fmt::Display for State {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            State::Starting => write!(f, "starting"),
+            State::Running => write!(f, "running"),
+            State::Stopped(None) => write!(f, "stopped"),
+            State::Stopped(Some(error)) => write!(f, "stopped: {}", error),
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -66,11 +81,14 @@ impl HLedgerWeb {
                 let _span_guard = span.enter();
 
                 let send_state = |state: State| {
-                    tracing::info!(?state);
+                    tracing::info!(%state);
                     state_tx.send(state).unwrap();
                 };
 
                 send_state(State::Starting);
+
+                let mut stderr = vec![];
+
                 match spawn(&handle, &file_path, &port).await {
                     Err(error) => {
                         send_state(State::Stopped(Some(error.clone())));
@@ -99,15 +117,24 @@ impl HLedgerWeb {
                                 }
                                 CommandEvent::Stderr(line) => {
                                     let line = str::from_utf8(&line).unwrap();
-                                    tracing::error!(line);
+                                    stderr.extend_from_slice(line.as_bytes());
+                                    stderr.push(b'\n');
                                 }
                                 CommandEvent::Error(error) => {
                                     send_state(State::Stopped(Some(Error::CommandEvent(error.clone()))));
                                     return Err(Error::CommandEvent(error));
                                 }
                                 CommandEvent::Terminated(payload) => {
-                                    send_state(State::Stopped(Some(Error::Terminated(payload.clone()))));
-                                    return Err(Error::Terminated(payload));
+                                    send_state(State::Stopped(Some(Error::Terminated{
+                                        code: payload.code,
+                                        signal: payload.signal,
+                                        message: stderr.clone(),
+                                    })));
+                                    return Err(Error::Terminated{
+                                        code: payload.code,
+                                        signal: payload.signal,
+                                        message: stderr,
+                            });
                                 }
                                 _ => {}
                             }

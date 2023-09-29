@@ -1,4 +1,4 @@
-use std::path;
+use std::{path, str};
 
 use egui_autocomplete::AutoCompleteTextEdit;
 use egui_extras::{Column, DatePickerButton, TableBuilder};
@@ -177,6 +177,62 @@ fn tab_ui(ui: &mut Ui, tab_state: &TabState) -> Vec<TabStateUpdate> {
                             "https://hledger.org/install.html",
                         ))
                     });
+                    vec![]
+                }
+                (
+                    Some(Err(hledger::Error::Process(hledger::ProcessError::Terminated {
+                        message,
+                        ..
+                    }))),
+                    _,
+                    _,
+                )
+                | (
+                    _,
+                    Some(Err(hledger::Error::Process(hledger::ProcessError::Terminated {
+                        message,
+                        ..
+                    }))),
+                    _,
+                )
+                | (
+                    _,
+                    _,
+                    Some(Err(hledger::Error::Process(hledger::ProcessError::Terminated {
+                        message,
+                        ..
+                    }))),
+                ) => {
+                    let mut message = str::from_utf8(message).unwrap();
+                    ui.add(
+                        TextEdit::multiline(&mut message)
+                            .desired_width(f32::INFINITY)
+                            .font(TextStyle::Monospace),
+                    );
+                    vec![]
+                }
+                (
+                    Some(Err(hledger::Error::Process(hledger::ProcessError::FailedToSpawn(_)))),
+                    _,
+                    _,
+                )
+                | (
+                    _,
+                    Some(Err(hledger::Error::Process(hledger::ProcessError::FailedToSpawn(_)))),
+                    _,
+                )
+                | (
+                    _,
+                    _,
+                    Some(Err(hledger::Error::Process(hledger::ProcessError::FailedToSpawn(_)))),
+                ) => {
+                    ui.vertical_centered(|ui| {
+                        ui.heading("Failed to spawn hledger-web :(");
+                    });
+                    vec![]
+                }
+                (None, None, None) => {
+                    loading_ui(ui);
                     vec![]
                 }
                 (account_trees, transactions, commodities) => {

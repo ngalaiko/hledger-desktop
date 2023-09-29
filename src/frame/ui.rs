@@ -157,7 +157,7 @@ fn account_tree_node_ui(ui: &mut Ui, node: &AccountTreeNode) -> Vec<TabStateUpda
 fn tab_ui(ui: &mut Ui, tab_state: &TabState) -> Vec<TabStateUpdate> {
     match (
         tab_state.accounts_tree.as_ref(),
-        tab_state.transactions.as_ref(),
+        tab_state.display_transactions.as_ref(),
         tab_state.commodities.as_ref(),
     ) {
         (Some(account_trees), Some(transactions), Some(commodities)) => {

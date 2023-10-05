@@ -9,7 +9,7 @@ license = "GPL-3.0-only"
 
 [dependencies]
 chrono = { version = "0.4.26", features = [ "serde" ] }
-egui-modal = "0.2.4"
+egui-modal = "0.2.5"
 egui-phosphor = "0.2.0"
 egui_autocomplete = "0.2.0"
 egui_extras = { version = "0.22", features = [ "chrono" ] }

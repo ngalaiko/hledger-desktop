@@ -11,7 +11,7 @@ license = "GPL-3.0-only"
 chrono = { version = "0.4.26", features = [ "serde" ] }
 egui-modal = "0.2.4"
 egui-phosphor = "0.2.0"
-egui_autocomplete = "0.2.0"
+egui_autocomplete = "2.0.0"
 egui_extras = { version = "0.22", features = [ "chrono" ] }
 futures = "0.3.28"
 lazy_static = "1.4.0"

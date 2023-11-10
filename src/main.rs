@@ -21,6 +21,7 @@ async fn main() {
     tauri::async_runtime::set(tokio::runtime::Handle::current());
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_single_instance::init(|_app, _argv, _cwd| {}))
         .setup(|app| {
             let handle = app.handle().clone();
             init_logs(&handle);

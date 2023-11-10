@@ -2,7 +2,7 @@
 name = "hledger-desktop"
 description = "Desktop GUI for the hledger accounting tool"
 version = "0.0.1"
-authors = [ "Nikita Galaiko <nikita@galaiko.rocks>" ]
+authors = ["Nikita Galaiko <nikita@galaiko.rocks>"]
 edition = "2021"
 repository = "https://github.com/ngalaiko/hledger-desktop"
 license = "GPL-3.0-only"
@@ -34,7 +34,6 @@ tracing = "0.1"
 tracing-appender = "0.2.2"
 tracing-subscriber = "0.3"
 url = "2.2"
-which = "4.4.2"
 
 [build-dependencies]
 tauri-build = { version = "=2.0.0-alpha.6", features = [ "config-toml" ] }

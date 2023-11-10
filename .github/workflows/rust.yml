@@ -45,6 +45,16 @@ jobs:
             --message-format=json | clippy-sarif | tee rust-clippy-results.sarif | sarif-fmt
         continue-on-error: true
 
+      - name: cargo sort
+        run: |
+          cargo install cargo-sort
+          cargo sort --check --workspace
+
+      - name: cargo unused deps
+        run: |
+          cargo install cargo-udeps
+          cargo +nightly udeps
+
       - name: Upload analysis results to GitHub
         uses: github/codeql-action/upload-sarif@v2
         with:

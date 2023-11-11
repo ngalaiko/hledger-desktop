@@ -24,7 +24,7 @@ impl Update {
     pub fn set_description(description: &str) -> Self {
         let description = description.to_string();
         Self::Ephemeral(Box::new(move |_, state| {
-            state.description = description.to_string();
+            state.description = description.clone();
         }))
     }
 
@@ -32,7 +32,7 @@ impl Update {
         let account = account.to_string();
         Self::Ephemeral(Box::new(move |_, state| {
             if let Some(posting) = state.postings.get_mut(index) {
-                posting.account = account.to_string();
+                posting.account = account.clone();
                 posting.parsed_account = account.parse();
             }
         }))
@@ -44,7 +44,7 @@ impl Update {
         let amount = amount.to_string();
         Self::Ephemeral(Box::new(move |_, state| {
             if let Some(posting) = state.postings.get_mut(index) {
-                posting.amount = amount.to_string();
+                posting.amount = amount.clone();
                 posting.parsed_amount = amount.parse();
             }
         }))
@@ -71,7 +71,7 @@ impl Update {
                     let client = manager.client(file_path).await?;
                     client.add(&transaction).await
                 }
-            }))
+            }));
         }))
     }
 
@@ -154,7 +154,7 @@ impl Update {
             let empty_input_postings = state.postings.iter().filter(|p| p.is_empty()).count();
 
             if empty_input_postings == 0 {
-                state.postings.push(PostingState::default())
+                state.postings.push(PostingState::default());
             }
         }))
     }

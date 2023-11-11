@@ -48,8 +48,7 @@ impl Update {
         Update::Ephemeral(Box::new(move |_, tab_state| {
             if let Some(transactions) = tab_state.transactions.as_mut().and_then(|transactions| {
                 match transactions.ready() {
-                    None => None,
-                    Some(Err(_)) => None,
+                    None | Some(Err(_)) => None,
                     Some(Ok(transactions)) => Some(transactions),
                 }
             }) {
@@ -76,9 +75,9 @@ impl Update {
             if let Some(parent) = account_name.parent() {
                 if tab_state.unchecked_accounts.contains(&parent) {
                     tab_state.unchecked_accounts.remove(&parent);
-                    siblings.iter().for_each(|sibling| {
+                    for sibling in siblings.iter() {
                         tab_state.unchecked_accounts.insert(sibling.clone());
-                    });
+                    }
                 }
             }
         }))
@@ -146,7 +145,7 @@ impl Update {
                         .collect::<Vec<_>>();
                     Ok(commodities)
                 }
-            }))
+            }));
         }))
     }
 
@@ -222,7 +221,7 @@ impl Update {
                         .collect::<Vec<_>>();
                     Ok(transactions)
                 }
-            }))
+            }));
         }))
     }
 
@@ -258,7 +257,7 @@ impl Update {
                     );
                     Ok(trees)
                 }
-            }))
+            }));
         }))
     }
 
@@ -266,8 +265,7 @@ impl Update {
         Update::Ephemeral(Box::new(|_, tab_state| {
             let transactions = tab_state.transactions.as_mut().and_then(|transactions| {
                 match transactions.ready() {
-                    None => None,
-                    Some(Err(_)) => None,
+                    None | Some(Err(_)) => None,
                     Some(Ok(transactions)) => Some(transactions),
                 }
             });
@@ -277,8 +275,7 @@ impl Update {
                     .converter
                     .as_mut()
                     .and_then(|converter| match converter.ready() {
-                        None => None,
-                        Some(Err(_)) => None,
+                        None | Some(Err(_)) => None,
                         Some(Ok(converter)) => Some(converter),
                     });
 
@@ -307,8 +304,7 @@ impl Update {
                     .accounts
                     .as_mut()
                     .and_then(|account_trees| match account_trees.ready() {
-                        None => None,
-                        Some(Err(_)) => None,
+                        None | Some(Err(_)) => None,
                         Some(Ok(accounts)) => Some(accounts),
                     })
             {
@@ -346,14 +342,15 @@ fn to_display_transaction(
                 .amount
                 .iter()
                 .map(|amount| {
-                    display_commotidy
-                        .map(|display_commotidy| {
+                    display_commotidy.map_or_else(
+                        || amount.clone(),
+                        |display_commotidy| {
                             // TODO: try to use amount's price here
                             converter
                                 .convert(amount, display_commotidy, &transaction.date)
                                 .unwrap_or_else(|_| amount.clone())
-                        })
-                        .unwrap_or_else(|| amount.clone())
+                        },
+                    )
                 })
                 .collect::<Vec<_>>()
                 .into(),

@@ -54,7 +54,7 @@ pub fn show(ctx: &Context, state: &State) -> Vec<StateUpdate> {
             if cfg!(debug_assertions) {
                 ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                     if let Some(update) = render_mode_ui(ui, state) {
-                        updates.push(update)
+                        updates.push(update);
                     }
 
                     frames_per_second_ui(ui, state);
@@ -95,7 +95,7 @@ fn account_tree_node_ui(ui: &mut Ui, node: &AccountTreeNode) -> Vec<TabStateUpda
                     match checkbox_state {
                         CheckboxState::Checked => updates.push(TabStateUpdate::check_account(node)),
                         CheckboxState::Unchecked => {
-                            updates.push(TabStateUpdate::uncheck_account(node))
+                            updates.push(TabStateUpdate::uncheck_account(node));
                         }
                         CheckboxState::Indeterminate => {}
                     }
@@ -123,13 +123,10 @@ fn account_tree_node_ui(ui: &mut Ui, node: &AccountTreeNode) -> Vec<TabStateUpda
                         if checkbox(ui, &mut checkbox_state).changed() {
                             match checkbox_state {
                                 CheckboxState::Checked => {
-                                    updates.push(TabStateUpdate::check_account(node))
+                                    updates.push(TabStateUpdate::check_account(node));
                                 }
-                                CheckboxState::Unchecked => {
-                                    updates.push(TabStateUpdate::uncheck_account(node))
-                                }
-                                CheckboxState::Indeterminate => {
-                                    updates.push(TabStateUpdate::uncheck_account(node))
+                                CheckboxState::Unchecked | CheckboxState::Indeterminate => {
+                                    updates.push(TabStateUpdate::uncheck_account(node));
                                 }
                             }
                         }
@@ -144,9 +141,9 @@ fn account_tree_node_ui(ui: &mut Ui, node: &AccountTreeNode) -> Vec<TabStateUpda
 
         if collapsing_button_response.clicked() {
             if is_open {
-                updates.push(TabStateUpdate::collapse_account(node.name()))
+                updates.push(TabStateUpdate::collapse_account(node.name()));
             } else {
-                updates.push(TabStateUpdate::expand_account(node.name()))
+                updates.push(TabStateUpdate::expand_account(node.name()));
             }
         }
     }
@@ -321,11 +318,10 @@ fn display_commodity_ui(
         let mut display_commodity = tab_state
             .display_commodity
             .as_ref()
-            .map(|c| c.to_string())
-            .unwrap_or("-".to_string());
+            .map_or("-".to_string(), |c| c.to_string());
 
         ComboBox::from_id_source("display commodity")
-            .selected_text(display_commodity.to_string())
+            .selected_text(display_commodity.clone())
             .show_ui(ui, |ui| {
                 for commodity in commodities {
                     if ui
@@ -368,10 +364,10 @@ fn new_transaction_modal_ui(ui: &mut Ui, tab_state: &TabState) -> Vec<TabStateUp
                             .add(DatePickerButton::new(&mut date).calendar_week(true))
                             .changed()
                         {
-                            updates.push(NewTransactionStateUpdate::set_date(&date).into())
+                            updates.push(NewTransactionStateUpdate::set_date(&date).into());
                         }
 
-                        let mut description = state.description.to_string();
+                        let mut description = state.description.clone();
                         ui.add(
                             AutoCompleteTextEdit::new(
                                 &mut description,
@@ -389,7 +385,7 @@ fn new_transaction_modal_ui(ui: &mut Ui, tab_state: &TabState) -> Vec<TabStateUp
                     let is_loading = state.is_loading();
                     for (i, posting) in state.postings.iter().enumerate() {
                         ui.horizontal(|ui| {
-                            let mut account = posting.account.to_string();
+                            let mut account = posting.account.clone();
                             ui.add(
                                 AutoCompleteTextEdit::new(
                                     &mut account,
@@ -409,7 +405,7 @@ fn new_transaction_modal_ui(ui: &mut Ui, tab_state: &TabState) -> Vec<TabStateUp
                                 NewTransactionStateUpdate::set_posting_account(i, &account).into(),
                             );
 
-                            let mut amount = posting.amount.to_string();
+                            let mut amount = posting.amount.clone();
                             if ui
                                 .add(
                                     TextEdit::singleline(&mut amount)
@@ -447,7 +443,7 @@ fn new_transaction_modal_ui(ui: &mut Ui, tab_state: &TabState) -> Vec<TabStateUp
                                     if ui
                                         .selectable_value(
                                             &mut selected_destination,
-                                            destination.to_path_buf(),
+                                            destination.clone(),
                                             destination
                                                 .file_name()
                                                 .unwrap()
@@ -492,8 +488,8 @@ fn new_transaction_modal_ui(ui: &mut Ui, tab_state: &TabState) -> Vec<TabStateUp
                                         if ui.button("add").clicked() {
                                             let tx = hledger::Transaction {
                                                 date: state.date,
-                                                description: state.description.to_string(),
-                                                postings: postings.to_vec(),
+                                                description: state.description.clone(),
+                                                postings: postings.clone(),
                                                 ..Default::default()
                                             };
                                             updates.push(
@@ -527,7 +523,7 @@ fn welcome_screen_ui(ui: &mut Ui) -> Vec<StateUpdate> {
         ui.heading("Welcome to hledger-desktop");
         if ui.button("Open a new file...").clicked() {
             if let Some(file_path) = rfd::FileDialog::new().pick_file() {
-                updates.push(StateUpdate::create_tab(file_path.to_path_buf()));
+                updates.push(StateUpdate::create_tab(file_path.clone()));
             }
         }
 
@@ -535,7 +531,7 @@ fn welcome_screen_ui(ui: &mut Ui) -> Vec<StateUpdate> {
         if let Some(default_file) = default_file {
             let default_file_name = default_file.file_name().unwrap().to_str().unwrap();
             if ui.button(format!("Open {}", default_file_name)).clicked() {
-                updates.push(StateUpdate::create_tab(default_file.to_path_buf()));
+                updates.push(StateUpdate::create_tab(default_file.clone()));
             }
         }
     });
@@ -572,7 +568,7 @@ fn tabs_list(ui: &mut Ui, state: &State) -> Vec<StateUpdate> {
                 .clicked()
         {
             if let Some(file_path) = rfd::FileDialog::new().pick_file() {
-                updates.push(StateUpdate::create_tab(file_path.to_path_buf()));
+                updates.push(StateUpdate::create_tab(file_path.clone()));
             }
         }
 
@@ -722,7 +718,7 @@ fn transactions_ui(ui: &mut Ui, transactions: &[hledger::Transaction]) {
                 });
                 row.col(|ui| {
                     ui.add(
-                        Label::new(RichText::new(transaction.description.to_string()).monospace())
+                        Label::new(RichText::new(transaction.description.clone()).monospace())
                             .wrap(false),
                     );
                 });

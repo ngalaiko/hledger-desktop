@@ -51,7 +51,7 @@ impl State {
 impl From<path::PathBuf> for State {
     fn from(value: path::PathBuf) -> Self {
         Self {
-            file_path: value.to_path_buf(),
+            file_path: value.clone(),
             ..Default::default()
         }
     }

@@ -19,8 +19,7 @@ pub fn ui(ui: &mut Ui, state: &mut CheckboxState) -> Response {
     if response.clicked() {
         *state = match *state {
             CheckboxState::Checked => CheckboxState::Unchecked,
-            CheckboxState::Unchecked => CheckboxState::Checked,
-            CheckboxState::Indeterminate => CheckboxState::Checked,
+            CheckboxState::Unchecked | CheckboxState::Indeterminate => CheckboxState::Checked,
         };
         response.mark_changed();
     }

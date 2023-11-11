@@ -30,8 +30,7 @@ impl Converter {
                 .flat_map(|posting| posting.amount.iter())
                 .fold(HashMap::new(), |mut styles, amount| {
                     match amount.price.as_ref() {
-                        Some(AmountPrice::TotalPrice(price))
-                        | Some(AmountPrice::UnitPrice(price)) => {
+                        Some(AmountPrice::TotalPrice(price) | AmountPrice::UnitPrice(price)) => {
                             styles.insert(amount.commodity.clone(), price.style.clone());
                         }
                         None => {}
@@ -45,9 +44,9 @@ impl Converter {
                 // insert forward rate
                 rates
                     .entry(price.from.clone())
-                    .or_insert_with(HashMap::new)
+                    .or_default()
                     .entry(price.to.clone())
-                    .or_insert_with(Vec::new)
+                    .or_default()
                     .push(DateRate(price.date, price.rate));
 
                 // make sure the latest rate is last
@@ -61,9 +60,9 @@ impl Converter {
                 // insert reverse rate
                 rates
                     .entry(price.to.clone())
-                    .or_insert_with(HashMap::new)
+                    .or_default()
                     .entry(price.from.clone())
-                    .or_insert_with(Vec::new)
+                    .or_default()
                     .push(DateRate(price.date, Quantity::ONE / price.rate));
 
                 // make sure the latest rate is last
@@ -155,7 +154,7 @@ mod tests {
             },
         ];
         let converter = Converter::new(&prices, &[]);
-        vec![
+        for (amount, target, date, expected) in vec![
             (
                 // no conversion
                 Amount {
@@ -247,8 +246,8 @@ mod tests {
             ),
         ]
         .iter()
-        .for_each(|(amount, target, date, expected)| {
+        {
             assert_eq!(converter.convert(amount, target, date), *expected);
-        });
+        }
     }
 }

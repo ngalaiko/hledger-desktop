@@ -33,21 +33,20 @@ impl From<&Vec<hledger::Transaction>> for State {
 
             date: value
                 .last()
-                .map(|t| t.date)
-                .unwrap_or_else(|| Local::now().date_naive()),
+                .map_or_else(|| Local::now().date_naive(), |t| t.date),
             description: String::new(),
             postings: vec![PostingState::default()],
             parsed_postings: Err(Error::InvalidPostings),
-            destination: value
-                .last()
-                .map(|t| t.source_position.0.file_name.clone())
-                .unwrap_or_else(|| {
+            destination: value.last().map_or_else(
+                || {
                     suggestions
                         .destinations
                         .first()
                         .expect("at least one destination is always present")
                         .clone()
-                }),
+                },
+                |t| t.source_position.0.file_name.clone(),
+            ),
             suggestions,
         }
     }

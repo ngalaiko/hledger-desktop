@@ -288,10 +288,10 @@ impl FromStr for Amount {
                 None => s.chars().filter(|c| c.is_ascii_digit()).collect::<String>(),
             }
             .parse::<i64>()
-            .map_err(|_| ParseAmountError::InvalidAmout(s.to_string()))?;
+            .map_err(|_err| ParseAmountError::InvalidAmout(s.to_string()))?;
 
             Ok(Self {
-                commodity: commodity.replace('"', "").to_string(),
+                commodity: commodity.replace('"', "").clone(),
                 quantity: Quantity(if is_negative {
                     Decimal::new(-decimal_mantissa, decimal_places as u32)
                 } else {
@@ -397,7 +397,7 @@ mod tests {
 
         #[test]
         fn from() {
-            vec![
+            for (amount, expected) in [
                 (
                     vec![Amount {
                         quantity: Decimal::new(2, 0).into(),
@@ -484,16 +484,14 @@ mod tests {
                         ..Default::default()
                     }]),
                 ),
-            ]
-            .into_iter()
-            .for_each(|(amount, expected)| {
+            ] {
                 assert_eq!(MixedAmount::from(amount), expected);
-            })
+            }
         }
 
         #[test]
         fn sum() {
-            vec![
+            for (amounts, expected) in [
                 (
                     vec![
                         MixedAmount::from(vec![Amount {
@@ -569,20 +567,18 @@ mod tests {
                         },
                     ]),
                 ),
-            ]
-            .into_iter()
-            .for_each(|(amounts, expected)| {
+            ] {
                 let mut got = amounts[0].clone();
                 amounts.iter().skip(1).for_each(|amount| {
                     got = got.clone() + amount.clone();
                 });
                 assert_eq!(got, expected);
-            })
+            }
         }
 
         #[test]
         fn sub() {
-            vec![
+            for (amounts, expected) in [
                 (
                     vec![
                         MixedAmount::from(vec![Amount {
@@ -684,15 +680,13 @@ mod tests {
                         ..Default::default()
                     }]),
                 ),
-            ]
-            .into_iter()
-            .for_each(|(amounts, expected)| {
+            ] {
                 let mut got = amounts[0].clone();
                 amounts.iter().skip(1).for_each(|amount| {
                     got = got.clone() - amount.clone();
                 });
                 assert_eq!(got, expected);
-            })
+            }
         }
     }
 
@@ -714,7 +708,7 @@ mod tests {
 
         #[test]
         fn parse() {
-            vec![
+            for (raw, expected) in [
                 ("s", Err(ParseAmountError::MissingAmount)),
                 (
                     "1",
@@ -978,16 +972,14 @@ mod tests {
                         }))),
                     }),
                 ),
-            ]
-            .into_iter()
-            .for_each(|(raw, expected)| {
+            ] {
                 assert_eq!(raw.parse::<Amount>(), expected, "failed to parse {}", raw);
-            });
+            }
         }
 
         #[test]
         fn display() {
-            vec![
+            for (amount, expected) in [
                 (
                     Amount {
                         commodity: "SEK".to_string(),
@@ -1078,11 +1070,9 @@ mod tests {
                     },
                     "-12.00 SEK",
                 ),
-            ]
-            .into_iter()
-            .for_each(|(amount, expected)| {
+            ] {
                 assert_eq!(format!("{}", amount), expected);
-            });
+            }
         }
     }
 }

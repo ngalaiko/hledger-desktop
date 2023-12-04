@@ -46,13 +46,14 @@ dependencies = [
 
 [[package]]
 name = "ahash"
-version = "0.8.3"
+version = "0.8.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2c99f64d1e06488f620f932677e24bc6e2897582980441ae90a671415bd7ec2f"
+checksum = "91429305e9f0a25f6205c5b8e0d2db09e0708a7a6df0f42212bb56c32c8ac97a"
 dependencies = [
  "cfg-if",
  "once_cell",
  "version_check",
+ "zerocopy",
 ]
 
 [[package]]
@@ -971,13 +972,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "ecolor"
+version = "0.24.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4b7637fc2e74d17e52931bac90ff4fc061ac776ada9c7fa272f24cdca5991972"
+
+[[package]]
 name = "eframe_tao"
 version = "0.23.0"
 source = "git+https://github.com/tauri-apps/egui?branch=0.21#97efd554bf12e948ac8e51240fd6f177b3d87bb3"
 dependencies = [
  "bytemuck",
  "cocoa",
- "egui",
+ "egui 0.22.0",
  "egui-tao",
  "egui_glow_tao",
  "glow",
@@ -1003,19 +1010,30 @@ version = "0.22.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a3aef8ec3ae1b772f340170c65bf27d5b8c28f543a0116c844d2ac08d01123e7"
 dependencies = [
- "ahash 0.8.3",
- "epaint",
+ "ahash 0.8.6",
+ "epaint 0.22.0",
  "log",
  "nohash-hasher",
 ]
 
 [[package]]
-name = "egui-modal"
-version = "0.2.4"
+name = "egui"
+version = "0.24.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "868331421dda06e5dc8e96b2be78fd01c33a8e5c99ca452369cebecbef7b6639"
+checksum = "c55bcb864b764eb889515a38b8924757657a250738ad15126637ee2df291ee6b"
 dependencies = [
- "egui",
+ "ahash 0.8.6",
+ "epaint 0.24.1",
+ "nohash-hasher",
+]
+
+[[package]]
+name = "egui-modal"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f606099ee8ae25afed745612a2854435c63bf4eb8b6f38859fd44d95f0f1d01d"
+dependencies = [
+ "egui 0.24.1",
 ]
 
 [[package]]
@@ -1024,7 +1042,7 @@ version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c20b33023d92696a165857bcb3d87a698894b0d8d04f9383fd890b945ba0b23f"
 dependencies = [
- "egui",
+ "egui 0.22.0",
 ]
 
 [[package]]
@@ -1033,7 +1051,7 @@ version = "0.23.0"
 source = "git+https://github.com/tauri-apps/egui?branch=0.21#97efd554bf12e948ac8e51240fd6f177b3d87bb3"
 dependencies = [
  "arboard",
- "egui",
+ "egui 0.22.0",
  "instant",
  "log",
  "raw-window-handle",
@@ -1048,7 +1066,7 @@ version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "134cf49869bd8849d130ddb88f0c7bef92d0e66199d21a0f94583c74aa1cdadd"
 dependencies = [
- "egui",
+ "egui 0.22.0",
  "fuzzy-matcher",
 ]
 
@@ -1059,7 +1077,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9278f4337b526f0d57e5375e5a7340a311fa6ee8f9fcc75721ac50af13face02"
 dependencies = [
  "chrono",
- "egui",
+ "egui 0.22.0",
  "serde",
 ]
 
@@ -1069,7 +1087,7 @@ version = "0.23.0"
 source = "git+https://github.com/tauri-apps/egui?branch=0.21#97efd554bf12e948ac8e51240fd6f177b3d87bb3"
 dependencies = [
  "bytemuck",
- "egui",
+ "egui 0.22.0",
  "glow",
  "log",
  "memoffset 0.6.5",
@@ -1091,6 +1109,12 @@ checksum = "3857d743a6e0741cdd60b622a74c7a36ea75f5f8f11b793b41d905d2c9721a4b"
 dependencies = [
  "bytemuck",
 ]
+
+[[package]]
+name = "emath"
+version = "0.24.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a045c6c0b44b35e98513fc1e9d183ab42881ac27caccb9fa345465601f56cce4"
 
 [[package]]
 name = "embed-resource"
@@ -1148,12 +1172,26 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "09333964d4d57f40a85338ba3ca5ed4716070ab184dcfed966b35491c5c64f3b"
 dependencies = [
  "ab_glyph",
- "ahash 0.8.3",
+ "ahash 0.8.6",
  "atomic_refcell",
  "bytemuck",
- "ecolor",
- "emath",
+ "ecolor 0.22.0",
+ "emath 0.22.0",
  "log",
+ "nohash-hasher",
+ "parking_lot",
+]
+
+[[package]]
+name = "epaint"
+version = "0.24.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7d1b9e000d21bab9b535ce78f9f7745be28b3f777f6c7223936561c5c7fefab8"
+dependencies = [
+ "ab_glyph",
+ "ahash 0.8.6",
+ "ecolor 0.24.1",
+ "emath 0.24.1",
  "nohash-hasher",
  "parking_lot",
 ]
@@ -4168,7 +4206,7 @@ version = "0.3.0"
 source = "git+https://github.com/Shays-Forks/tauri-egui.git?branch=0.22#387f4799754cde04e202ab21fa4ad81f1cbc8412"
 dependencies = [
  "eframe_tao",
- "egui",
+ "egui 0.22.0",
  "egui-tao",
  "egui_glow_tao",
  "glow",
@@ -5509,6 +5547,26 @@ dependencies = [
  "serde",
  "static_assertions",
  "zvariant",
+]
+
+[[package]]
+name = "zerocopy"
+version = "0.7.28"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7d6f15f7ade05d2a4935e34a457b936c23dc70a05cc1d97133dc99e7a3fe0f0e"
+dependencies = [
+ "zerocopy-derive",
+]
+
+[[package]]
+name = "zerocopy-derive"
+version = "0.7.28"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dbbad221e3f78500350ecbd7dfa4e63ef945c05f4c61cb7f4d3f84cd0bba649b"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.31",
 ]
 
 [[package]]

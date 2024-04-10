@@ -263,7 +263,7 @@ impl Update {
             let transactions = tab_state.transactions.as_mut().and_then(|transactions| {
                 match transactions.ready() {
                     None | Some(Err(_)) => None,
-                    Some(Ok(transactions)) => Some(transactions),
+                    Some(Ok(transactions)) => Some(transactions.clone()),
                 }
             });
 
@@ -273,23 +273,26 @@ impl Update {
                     .as_mut()
                     .and_then(|converter| match converter.ready() {
                         None | Some(Err(_)) => None,
-                        Some(Ok(converter)) => Some(converter),
+                        Some(Ok(converter)) => Some(converter.clone()),
                     });
 
             if let (Some(trasnsactions), Some(converter)) = (transactions, converter) {
-                let display_transactions = trasnsactions
-                    .iter()
-                    .filter_map(|transaction| {
-                        to_display_transaction(
-                            transaction,
-                            converter,
-                            &tab_state.unchecked_accounts,
-                            tab_state.display_commodity.as_ref(),
-                        )
-                    })
-                    .collect::<Vec<_>>();
-                tab_state.display_transactions =
-                    Some(Promise::from_ready(Ok(display_transactions)));
+                let unchecked_accounts = tab_state.unchecked_accounts.clone();
+                let display_commodity = tab_state.display_commodity.clone();
+                tab_state.display_transactions = Some(Promise::spawn_blocking(move || {
+                    let display_transactions = trasnsactions
+                        .iter()
+                        .filter_map(|transaction| {
+                            to_display_transaction(
+                                transaction,
+                                &converter,
+                                &unchecked_accounts,
+                                display_commodity.as_ref(),
+                            )
+                        })
+                        .collect::<Vec<_>>();
+                    Ok(display_transactions)
+                }));
             }
         }))
     }

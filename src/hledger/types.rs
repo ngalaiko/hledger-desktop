@@ -135,6 +135,13 @@ impl Iterator for DigitGroupStyle {
 }
 
 #[derive(Debug, Default, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+pub enum AmountStyleRounding {
+    #[default]
+    NoRounding,
+    HardRounding,
+}
+
+#[derive(Debug, Default, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct AmountStyle {
     #[serde(rename = "ascommodityside")]
     pub commodity_side: Side,
@@ -146,6 +153,8 @@ pub struct AmountStyle {
     pub decimal_point: Option<char>,
     #[serde(rename = "asdigitgroups")]
     pub digit_groups: Option<DigitGroupStyle>,
+    #[serde(rename = "asrounding")]
+    pub rounding: AmountStyleRounding,
 }
 
 pub type Commodity = String;
@@ -304,7 +313,7 @@ impl FromStr for Amount {
                     spaced,
                     precision: decimal_places,
                     decimal_point,
-                    digit_groups: None,
+                    ..Default::default()
                 },
                 price: Box::new(None),
             })
@@ -718,13 +727,7 @@ mod tests {
                     Ok(Amount {
                         commodity: String::new(),
                         quantity: Quantity(Decimal::new(1, 0)),
-                        style: AmountStyle {
-                            commodity_side: Side::Right,
-                            spaced: false,
-                            precision: 0,
-                            decimal_point: None,
-                            digit_groups: None,
-                        },
+                        style: AmountStyle::default(),
                         price: Box::new(None),
                     }),
                 ),
@@ -735,10 +738,7 @@ mod tests {
                         quantity: Quantity(Decimal::new(1, 0)),
                         style: AmountStyle {
                             commodity_side: Side::Left,
-                            spaced: false,
-                            precision: 0,
-                            decimal_point: None,
-                            digit_groups: None,
+                            ..AmountStyle::default()
                         },
                         price: Box::new(None),
                     }),
@@ -749,11 +749,8 @@ mod tests {
                         commodity: "AAPL".to_string(),
                         quantity: Quantity(Decimal::new(4000, 0)),
                         style: AmountStyle {
-                            commodity_side: Side::Right,
                             spaced: true,
-                            precision: 0,
-                            decimal_point: None,
-                            digit_groups: None,
+                            ..AmountStyle::default()
                         },
                         price: Box::new(None),
                     }),
@@ -764,11 +761,8 @@ mod tests {
                         commodity: "green apples".to_string(),
                         quantity: Quantity(Decimal::new(3, 0)),
                         style: AmountStyle {
-                            commodity_side: Side::Right,
                             spaced: true,
-                            precision: 0,
-                            decimal_point: None,
-                            digit_groups: None,
+                            ..AmountStyle::default()
                         },
                         price: Box::new(None),
                     }),
@@ -780,10 +774,7 @@ mod tests {
                         quantity: Quantity(Decimal::new(-1, 0)),
                         style: AmountStyle {
                             commodity_side: Side::Left,
-                            spaced: false,
-                            precision: 0,
-                            decimal_point: None,
-                            digit_groups: None,
+                            ..AmountStyle::default()
                         },
                         price: Box::new(None),
                     }),
@@ -795,10 +786,7 @@ mod tests {
                         quantity: Quantity(Decimal::new(-1, 0)),
                         style: AmountStyle {
                             commodity_side: Side::Left,
-                            spaced: false,
-                            precision: 0,
-                            decimal_point: None,
-                            digit_groups: None,
+                            ..AmountStyle::default()
                         },
                         price: Box::new(None),
                     }),
@@ -810,10 +798,7 @@ mod tests {
                         quantity: Quantity(Decimal::new(1, 0)),
                         style: AmountStyle {
                             commodity_side: Side::Left,
-                            spaced: false,
-                            precision: 0,
-                            decimal_point: None,
-                            digit_groups: None,
+                            ..AmountStyle::default()
                         },
                         price: Box::new(None),
                     }),
@@ -825,10 +810,7 @@ mod tests {
                         quantity: Quantity(Decimal::new(-1, 0)),
                         style: AmountStyle {
                             commodity_side: Side::Left,
-                            spaced: false,
-                            precision: 0,
-                            decimal_point: None,
-                            digit_groups: None,
+                            ..AmountStyle::default()
                         },
                         price: Box::new(None),
                     }),
@@ -839,11 +821,9 @@ mod tests {
                         commodity: String::new(),
                         quantity: Quantity(Decimal::new(123, 2)),
                         style: AmountStyle {
-                            commodity_side: Side::Right,
-                            spaced: false,
                             precision: 2,
                             decimal_point: Some('.'),
-                            digit_groups: None,
+                            ..AmountStyle::default()
                         },
                         price: Box::new(None),
                     }),
@@ -854,11 +834,9 @@ mod tests {
                         commodity: String::new(),
                         quantity: Quantity(Decimal::new(123_456_780_000_009, 14)),
                         style: AmountStyle {
-                            commodity_side: Side::Right,
-                            spaced: false,
                             precision: 14,
                             decimal_point: Some(','),
-                            digit_groups: None,
+                            ..AmountStyle::default()
                         },
                         price: Box::new(None),
                     }),
@@ -873,7 +851,7 @@ mod tests {
                             spaced: true,
                             precision: 2,
                             decimal_point: Some(','),
-                            digit_groups: None,
+                            ..AmountStyle::default()
                         },
                         price: Box::new(None),
                     }),
@@ -888,7 +866,7 @@ mod tests {
                             spaced: true,
                             precision: 2,
                             decimal_point: Some('.'),
-                            digit_groups: None,
+                            ..AmountStyle::default()
                         },
                         price: Box::new(None),
                     }),
@@ -899,11 +877,9 @@ mod tests {
                         commodity: String::new(),
                         quantity: Quantity(Decimal::new(10_000_009_455, 4)),
                         style: AmountStyle {
-                            commodity_side: Side::Right,
-                            spaced: false,
                             precision: 4,
                             decimal_point: Some('.'),
-                            digit_groups: None,
+                            ..AmountStyle::default()
                         },
                         price: Box::new(None),
                     }),
@@ -914,11 +890,8 @@ mod tests {
                         commodity: "Liquorice Wands".to_string(),
                         quantity: Quantity(Decimal::new(-2, 0)),
                         style: AmountStyle {
-                            commodity_side: Side::Right,
                             spaced: true,
-                            precision: 0,
-                            decimal_point: None,
-                            digit_groups: None,
+                            ..AmountStyle::default()
                         },
                         price: Box::new(None),
                     }),
@@ -929,21 +902,17 @@ mod tests {
                         commodity: "SEK".to_string(),
                         quantity: Quantity(Decimal::new(1, 0)),
                         style: AmountStyle {
-                            commodity_side: Side::Right,
                             spaced: true,
-                            precision: 0,
-                            decimal_point: None,
-                            digit_groups: None,
+                            ..AmountStyle::default()
                         },
                         price: Box::new(Some(AmountPrice::UnitPrice(Amount {
                             commodity: "USD".to_string(),
                             quantity: Quantity(Decimal::new(12, 1)),
                             style: AmountStyle {
-                                commodity_side: Side::Right,
                                 spaced: true,
                                 precision: 1,
                                 decimal_point: Some('.'),
-                                digit_groups: None,
+                                ..AmountStyle::default()
                             },
                             price: Box::new(None),
                         }))),
@@ -955,21 +924,17 @@ mod tests {
                         commodity: "SEK".to_string(),
                         quantity: Quantity(Decimal::new(1, 0)),
                         style: AmountStyle {
-                            commodity_side: Side::Right,
                             spaced: true,
-                            precision: 0,
-                            decimal_point: None,
-                            digit_groups: None,
+                            ..AmountStyle::default()
                         },
                         price: Box::new(Some(AmountPrice::TotalPrice(Amount {
                             commodity: "USD".to_string(),
                             quantity: Quantity(Decimal::new(12, 1)),
                             style: AmountStyle {
-                                commodity_side: Side::Right,
                                 spaced: true,
                                 precision: 1,
                                 decimal_point: Some('.'),
-                                digit_groups: None,
+                                ..AmountStyle::default()
                             },
                             price: Box::new(None),
                         }))),
@@ -988,11 +953,11 @@ mod tests {
                         commodity: "SEK".to_string(),
                         quantity: Quantity(Decimal::new(1_200_000, 2)),
                         style: AmountStyle {
-                            commodity_side: Side::Right,
                             spaced: true,
                             precision: 2,
                             decimal_point: Some('.'),
                             digit_groups: Some(DigitGroupStyle((',', vec![3]))),
+                            ..AmountStyle::default()
                         },
                         price: Box::new(None),
                     },
@@ -1003,11 +968,8 @@ mod tests {
                         commodity: "SEK".to_string(),
                         quantity: Quantity(Decimal::new(-100, 0)),
                         style: AmountStyle {
-                            commodity_side: Side::Right,
                             spaced: true,
-                            precision: 0,
-                            decimal_point: None,
-                            digit_groups: None,
+                            ..AmountStyle::default()
                         },
                         price: Box::new(None),
                     },
@@ -1018,11 +980,11 @@ mod tests {
                         commodity: "SEK".to_string(),
                         quantity: Quantity(Decimal::new(-1_200_000, 2)),
                         style: AmountStyle {
-                            commodity_side: Side::Right,
                             spaced: true,
                             precision: 2,
                             decimal_point: Some('.'),
                             digit_groups: Some(DigitGroupStyle((',', vec![3]))),
+                            ..AmountStyle::default()
                         },
                         price: Box::new(None),
                     },
@@ -1033,11 +995,11 @@ mod tests {
                         commodity: "SEK".to_string(),
                         quantity: Quantity(Decimal::new(-30000, 2)),
                         style: AmountStyle {
-                            commodity_side: Side::Right,
                             spaced: true,
                             precision: 2,
                             decimal_point: Some('.'),
                             digit_groups: Some(DigitGroupStyle((',', vec![3]))),
+                            ..AmountStyle::default()
                         },
                         price: Box::new(None),
                     },
@@ -1048,11 +1010,11 @@ mod tests {
                         commodity: "SEK".to_string(),
                         quantity: Quantity(Decimal::new(-123_456, 4)),
                         style: AmountStyle {
-                            commodity_side: Side::Right,
                             spaced: true,
                             precision: 2,
                             decimal_point: Some('.'),
                             digit_groups: Some(DigitGroupStyle((',', vec![3]))),
+                            ..AmountStyle::default()
                         },
                         price: Box::new(None),
                     },
@@ -1063,11 +1025,11 @@ mod tests {
                         commodity: "SEK".to_string(),
                         quantity: Quantity(Decimal::new(-12, 0)),
                         style: AmountStyle {
-                            commodity_side: Side::Right,
                             spaced: true,
                             precision: 2,
                             decimal_point: Some('.'),
                             digit_groups: Some(DigitGroupStyle((',', vec![3]))),
+                            ..AmountStyle::default()
                         },
                         price: Box::new(None),
                     },

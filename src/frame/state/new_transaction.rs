@@ -62,6 +62,7 @@ pub enum Error {
     Unbalanced(MixedAmount),
 }
 
+#[derive(Debug)]
 pub struct PostingState {
     pub account: String,
     pub parsed_account: Result<hledger::AccountName, hledger::ParseAccountNameError>,

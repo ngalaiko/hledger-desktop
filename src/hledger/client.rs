@@ -1,4 +1,4 @@
-use std::{path, sync::Arc};
+use std::{path, string, sync::Arc};
 
 use reqwest::{Client, Method};
 use tauri::AppHandle;
@@ -12,6 +12,10 @@ pub enum Error {
     Process(process::Error),
     #[error("failed to send http request: {0}")]
     Http(Arc<reqwest::Error>),
+    #[error("api error: {0}")]
+    Api(String),
+    #[error("utf8: {0}")]
+    Utf8(string::FromUtf8Error),
     #[error("failed to parse json: {0}")]
     Json(Arc<serde_json::Error>),
 }
@@ -173,9 +177,15 @@ impl HLedgerWebInner {
             .send()
             .await
             .map_err(|error| Error::Http(Arc::new(error)))?;
-        response
-            .error_for_status_ref()
-            .map_err(|error| Error::Http(Arc::new(error)))?;
-        Ok(())
+        if response.status().is_client_error() {
+            let bytes = response
+                .bytes()
+                .await
+                .map_err(|error| Error::Http(Arc::new(error)))?;
+            let message = String::from_utf8(bytes.to_vec()).map_err(Error::Utf8)?;
+            Err(Error::Api(message))
+        } else {
+            Ok(())
+        }
     }
 }

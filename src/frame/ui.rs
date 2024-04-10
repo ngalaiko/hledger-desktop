@@ -507,6 +507,10 @@ fn new_transaction_modal_ui(ui: &mut Ui, tab_state: &TabState) -> Vec<TabStateUp
                             }
                         });
                     });
+
+                    if let Some(Err(error)) = state.creating.as_ref().and_then(|p| p.ready()) {
+                        ui.label(error.to_string());
+                    };
                 });
             });
             new_transaction_modal.open();

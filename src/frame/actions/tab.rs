@@ -24,7 +24,7 @@ impl From<new_transaction::Update> for Update {
             new_transaction::Update::Ephemeral(update) => {
                 Update::Ephemeral(Box::new(move |handle, tab_state| {
                     if let Some(ref mut new_transaction_modal_state) =
-                        tab_state.new_transaction_modal_state
+                        tab_state.new_transaction_modal
                     {
                         update(handle, new_transaction_modal_state);
                     }
@@ -33,7 +33,7 @@ impl From<new_transaction::Update> for Update {
             new_transaction::Update::Persistent(update) => {
                 Update::Persistent(Box::new(move |handle, tab_state| {
                     if let Some(ref mut new_transaction_modal_state) =
-                        tab_state.new_transaction_modal_state
+                        tab_state.new_transaction_modal
                     {
                         update(handle, new_transaction_modal_state);
                     }
@@ -52,7 +52,7 @@ impl Update {
                     Some(Ok(transactions)) => Some(transactions),
                 }
             }) {
-                tab_state.new_transaction_modal_state =
+                tab_state.new_transaction_modal =
                     Some(new_transaction_state::State::from(transactions));
             }
         }))
@@ -60,7 +60,7 @@ impl Update {
 
     pub fn close_new_transaction_modal() -> Self {
         Update::Ephemeral(Box::new(move |_, tab_state| {
-            tab_state.new_transaction_modal_state = None;
+            tab_state.new_transaction_modal = None;
         }))
     }
 
@@ -75,7 +75,7 @@ impl Update {
             if let Some(parent) = account_name.parent() {
                 if tab_state.unchecked_accounts.contains(&parent) {
                     tab_state.unchecked_accounts.remove(&parent);
-                    for sibling in siblings.iter() {
+                    for sibling in &siblings {
                         tab_state.unchecked_accounts.insert(sibling.clone());
                     }
                 }
@@ -117,11 +117,10 @@ impl Update {
         .and_then(Update::recalculate_display_transactions())
     }
 
-    pub fn set_display_commodity(commodity: Option<hledger::Commodity>) -> Self {
-        let commodity = commodity.clone();
+    pub fn set_display_commodity(commodity: Option<&hledger::Commodity>) -> Self {
+        let commodity = commodity.cloned();
         Update::Persistent(Box::new(move |_, tab_state| {
-            let commodity = commodity.clone();
-            tab_state.display_commodity = commodity;
+            tab_state.display_commodity = commodity.clone();
         }))
         .and_then(Update::recalculate_display_transactions())
     }
@@ -347,7 +346,7 @@ fn to_display_transaction(
                         |display_commotidy| {
                             // TODO: try to use amount's price here
                             converter
-                                .convert(amount, display_commotidy, &transaction.date)
+                                .convert(amount, display_commotidy, transaction.date)
                                 .unwrap_or_else(|_| amount.clone())
                         },
                     )

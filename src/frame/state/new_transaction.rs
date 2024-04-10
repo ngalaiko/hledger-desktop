@@ -116,9 +116,9 @@ impl From<&Vec<hledger::Transaction>> for Suggestions {
             .collect::<Vec<_>>();
         account_names.sort();
         Suggestions {
-            destinations,
             descriptions,
             account_names,
+            destinations,
         }
     }
 }

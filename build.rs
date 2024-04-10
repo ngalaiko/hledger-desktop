@@ -4,7 +4,7 @@ fn setup_binaries() -> Result<(), Box<dyn std::error::Error>> {
 
     let triple = env::var("TARGET")?;
     let binaries_path = path::Path::new("binaries");
-    let hledger_web_path = binaries_path.join(format!("hledger-web-{}", triple));
+    let hledger_web_path = binaries_path.join(format!("hledger-web-{triple}"));
     if hledger_web_path.exists() {
         return Ok(());
     }

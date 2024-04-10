@@ -44,7 +44,7 @@ impl fmt::Display for State {
             State::Starting => write!(f, "starting"),
             State::Running => write!(f, "running"),
             State::Stopped(None) => write!(f, "stopped"),
-            State::Stopped(Some(error)) => write!(f, "stopped: {}", error),
+            State::Stopped(Some(error)) => write!(f, "stopped: {error}"),
         }
     }
 }
@@ -64,7 +64,7 @@ impl HLedgerWeb {
         let file_path = file_path.as_ref().to_path_buf();
         let port = rand::thread_rng().gen_range(32768..65536);
         let endpoint =
-            Url::parse(format!("http://localhost:{}", port).as_str()).expect("failed to parse url");
+            Url::parse(format!("http://localhost:{port}").as_str()).expect("failed to parse url");
         let (state_tx, mut state_rx) = watch::channel(State::Starting);
         let state_tx = Arc::new(state_tx);
         let cancel_token = CancellationToken::new();
@@ -96,7 +96,7 @@ impl HLedgerWeb {
                     }
                     Ok((mut rx, child)) => loop {
                         select! {
-                            _ = c_cancel_token.cancelled() => match child.kill() {
+                            () = c_cancel_token.cancelled() => match child.kill() {
                                 Ok(()) => {
                                     send_state(State::Stopped(None));
                                     return Ok(());

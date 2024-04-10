@@ -88,7 +88,7 @@ impl Converter {
         &self,
         amount: &Amount,
         target: &Commodity,
-        target_date: &NaiveDate,
+        target_date: NaiveDate,
     ) -> Result<Amount, Error> {
         if amount.commodity == *target {
             return Ok(amount.clone());
@@ -103,7 +103,7 @@ impl Converter {
 
         let latest_rate = rates
             .iter()
-            .filter(|DateRate(date, _)| date <= target_date)
+            .filter(|DateRate(date, _)| *date <= target_date)
             .last()
             .ok_or(Error::NoRate {
                 from: amount.commodity.clone(),
@@ -132,6 +132,7 @@ mod tests {
     use super::*;
 
     #[test]
+    #[allow(clippy::too_many_lines)]
     fn convertion() {
         let prices = vec![
             Price {
@@ -154,7 +155,7 @@ mod tests {
             },
         ];
         let converter = Converter::new(&prices, &[]);
-        for (amount, target, date, expected) in vec![
+        for (amount, target, date, expected) in [
             (
                 // no conversion
                 Amount {
@@ -244,10 +245,8 @@ mod tests {
                     to: Commodity::from("GBP"),
                 }),
             ),
-        ]
-        .iter()
-        {
-            assert_eq!(converter.convert(amount, target, date), *expected);
+        ] {
+            assert_eq!(converter.convert(&amount, &target, date), expected);
         }
     }
 }

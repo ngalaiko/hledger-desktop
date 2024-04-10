@@ -36,7 +36,7 @@ pub struct State {
     #[serde(skip)]
     pub converter: Option<Promise<Result<Converter, hledger::Error>>>,
     #[serde(skip)]
-    pub new_transaction_modal_state: Option<new_transaction::State>,
+    pub new_transaction_modal: Option<new_transaction::State>,
 }
 
 impl State {

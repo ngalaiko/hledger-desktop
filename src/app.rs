@@ -23,7 +23,7 @@ impl App {
         cc.egui_ctx.set_fonts(fonts);
 
         cc.egui_ctx.set_visuals(state.theme.into());
-        Self { state, handle }
+        Self { handle, state }
     }
 }
 
@@ -70,7 +70,7 @@ impl tauri_egui::eframe::App for App {
 impl From<eframe::WindowInfo> for WindowInfo {
     fn from(value: eframe::WindowInfo) -> Self {
         Self {
-            position: value.position.map(|p| p.into()),
+            position: value.position.map(Into::into),
             size: [value.size.x, value.size.y],
             fullscreen: value.fullscreen,
             maximized: value.maximized,

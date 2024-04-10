@@ -151,6 +151,7 @@ fn account_tree_node_ui(ui: &mut Ui, node: &AccountTreeNode) -> Vec<TabStateUpda
     updates
 }
 
+#[allow(clippy::too_many_lines)]
 fn tab_ui(ui: &mut Ui, tab_state: &TabState) -> Vec<TabStateUpdate> {
     match (
         tab_state.accounts_tree.as_ref(),
@@ -318,7 +319,7 @@ fn display_commodity_ui(
         let mut display_commodity = tab_state
             .display_commodity
             .as_ref()
-            .map_or("-".to_string(), |c| c.to_string());
+            .map_or("-".to_string(), ToString::to_string);
 
         ComboBox::from_id_source("display commodity")
             .selected_text(display_commodity.clone())
@@ -333,7 +334,7 @@ fn display_commodity_ui(
                         .changed()
                     {
                         update.replace(TabStateUpdate::set_display_commodity(Some(
-                            display_commodity.clone(),
+                            &display_commodity,
                         )));
                     }
                 }
@@ -347,9 +348,10 @@ fn display_commodity_ui(
     update
 }
 
+#[allow(clippy::too_many_lines)]
 fn new_transaction_modal_ui(ui: &mut Ui, tab_state: &TabState) -> Vec<TabStateUpdate> {
     tab_state
-        .new_transaction_modal_state
+        .new_transaction_modal
         .as_ref()
         .map(|state| {
             let mut updates = vec![];
@@ -364,7 +366,7 @@ fn new_transaction_modal_ui(ui: &mut Ui, tab_state: &TabState) -> Vec<TabStateUp
                             .add(DatePickerButton::new(&mut date).calendar_week(true))
                             .changed()
                         {
-                            updates.push(NewTransactionStateUpdate::set_date(&date).into());
+                            updates.push(NewTransactionStateUpdate::set_date(date).into());
                         }
 
                         let mut description = state.description.clone();
@@ -479,7 +481,7 @@ fn new_transaction_modal_ui(ui: &mut Ui, tab_state: &TabState) -> Vec<TabStateUp
                                         ui.add_enabled(false, Button::new("add"));
                                     }
                                     Err(NewTransactionStateError::Unbalanced(saldo)) => {
-                                        ui.label(format!("saldo: {}", saldo));
+                                        ui.label(format!("saldo: {saldo}"));
                                     }
                                     Err(NewTransactionStateError::TooManyEmptyAmounts) => {
                                         ui.label("only one empty amount is allowed");
@@ -530,7 +532,7 @@ fn welcome_screen_ui(ui: &mut Ui) -> Vec<StateUpdate> {
         let default_file = std::env::var("LEDGER_FILE").map(path::PathBuf::from).ok();
         if let Some(default_file) = default_file {
             let default_file_name = default_file.file_name().unwrap().to_str().unwrap();
-            if ui.button(format!("Open {}", default_file_name)).clicked() {
+            if ui.button(format!("Open {default_file_name}")).clicked() {
                 updates.push(StateUpdate::create_tab(default_file.clone()));
             }
         }
@@ -612,7 +614,7 @@ fn dark_light_mode_switch_ui(ui: &mut Ui, state: &State) -> Option<StateUpdate> 
 
     if let Some(theme) = new_theme {
         ui.ctx().set_visuals(theme.into());
-        Some(StateUpdate::set_theme(&theme))
+        Some(StateUpdate::set_theme(theme))
     } else {
         None
     }
@@ -627,7 +629,7 @@ fn render_mode_ui(ui: &mut Ui, state: &State) -> Option<StateUpdate> {
                 .on_hover_text("Switch to reactive rendering")
                 .clicked()
             {
-                Some(StateUpdate::set_render_mode(&RenderMode::Reactive))
+                Some(StateUpdate::set_render_mode(RenderMode::Reactive))
             } else {
                 None
             }
@@ -638,7 +640,7 @@ fn render_mode_ui(ui: &mut Ui, state: &State) -> Option<StateUpdate> {
                 .on_hover_text("Switch to continious rendering")
                 .clicked()
             {
-                Some(StateUpdate::set_render_mode(&RenderMode::Continious))
+                Some(StateUpdate::set_render_mode(RenderMode::Continious))
             } else {
                 None
             }
@@ -680,6 +682,7 @@ fn loading_ui(ui: &mut Ui) {
     });
 }
 
+#[allow(clippy::cast_precision_loss)]
 fn transaction_height(ui: &Ui, transaction: &hledger::Transaction) -> f32 {
     let row_height = ui.text_style_height(&TextStyle::Monospace);
     let inter_height = ui.spacing().item_spacing.y;

@@ -14,8 +14,7 @@ use super::action::StateAction;
 pub type Update = StateAction<State>;
 
 impl Update {
-    pub fn set_date(date: &NaiveDate) -> Self {
-        let date = *date;
+    pub fn set_date(date: NaiveDate) -> Self {
         Self::Ephemeral(Box::new(move |_, state| {
             state.date = date;
         }))
@@ -190,9 +189,9 @@ impl From<&Vec<hledger::Transaction>> for Suggestions {
             .collect::<Vec<_>>();
         account_names.sort();
         Suggestions {
-            destinations,
             descriptions,
             account_names,
+            destinations,
         }
     }
 }

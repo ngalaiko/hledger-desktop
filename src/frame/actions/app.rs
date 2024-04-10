@@ -23,8 +23,7 @@ impl Action {
         }))
     }
 
-    pub fn set_theme(theme: &Theme) -> Self {
-        let theme = *theme;
+    pub fn set_theme(theme: Theme) -> Self {
         Action::Persistent(Box::new(move |_, state| {
             state.theme = theme;
         }))
@@ -68,8 +67,7 @@ impl Action {
         }
     }
 
-    pub fn set_render_mode(mode: &RenderMode) -> Self {
-        let mode = *mode;
+    pub fn set_render_mode(mode: RenderMode) -> Self {
         Action::Ephemeral(Box::new(move |_, state| {
             state.render_mode = mode;
         }))

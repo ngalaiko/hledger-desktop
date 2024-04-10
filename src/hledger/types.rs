@@ -43,7 +43,7 @@ impl<'d> serde::Deserialize<'d> for Quantity {
             .ok_or_else(|| serde::de::Error::custom("decimalPlaces is not an integer"))?;
         Ok(Quantity(Decimal::new(
             decimal_mantissa,
-            decimal_places as u32,
+            u32::try_from(decimal_places).map_err(serde::de::Error::custom)?,
         )))
     }
 }
@@ -141,7 +141,7 @@ pub struct AmountStyle {
     #[serde(rename = "ascommodityspaced")]
     pub spaced: bool,
     #[serde(rename = "asprecision")]
-    pub precision: usize,
+    pub precision: u32,
     #[serde(rename = "asdecimalpoint")]
     pub decimal_point: Option<char>,
     #[serde(rename = "asdigitgroups")]
@@ -278,14 +278,16 @@ impl FromStr for Amount {
 
             // precision is the number of digits after the decimal point
             let decimal_places = decimal_point.map_or(0, |c| s.split(c).last().unwrap().len());
+            let decimal_places = u32::try_from(decimal_places)
+                .map_err(|_| ParseAmountError::InvalidAmout(s.to_string()))?;
 
             let decimal_mantissa = match decimal_point {
                 Some(d) => s
                     .chars()
-                    .filter(|c| c.is_ascii_digit())
+                    .filter(char::is_ascii_digit)
                     .take_while(|c| !c.eq(&d))
                     .collect::<String>(),
-                None => s.chars().filter(|c| c.is_ascii_digit()).collect::<String>(),
+                None => s.chars().filter(char::is_ascii_digit).collect::<String>(),
             }
             .parse::<i64>()
             .map_err(|_err| ParseAmountError::InvalidAmout(s.to_string()))?;
@@ -293,9 +295,9 @@ impl FromStr for Amount {
             Ok(Self {
                 commodity: commodity.replace('"', "").clone(),
                 quantity: Quantity(if is_negative {
-                    Decimal::new(-decimal_mantissa, decimal_places as u32)
+                    Decimal::new(-decimal_mantissa, decimal_places)
                 } else {
-                    Decimal::new(decimal_mantissa, decimal_places as u32)
+                    Decimal::new(decimal_mantissa, decimal_places)
                 }),
                 style: AmountStyle {
                     commodity_side: side,
@@ -338,9 +340,8 @@ impl fmt::Display for Amount {
                 result.extend(head.chars());
                 if integer_part.is_empty() {
                     break;
-                } else {
-                    result.push(separator);
                 }
+                result.push(separator);
             }
             result.into_iter().rev().collect::<String>()
         } else {
@@ -350,7 +351,7 @@ impl fmt::Display for Amount {
         let fractional_part = self
             .quantity
             .0
-            .round_dp(self.style.precision.try_into().unwrap())
+            .round_dp(self.style.precision)
             .fract()
             .abs()
             .mantissa()
@@ -365,7 +366,7 @@ impl fmt::Display for Amount {
                 integer_part,
                 self.style.decimal_point.unwrap_or('.'),
                 fractional_part,
-                width = self.style.precision
+                width = self.style.precision as usize
             )
         };
 
@@ -577,6 +578,7 @@ mod tests {
         }
 
         #[test]
+        #[allow(clippy::too_many_lines)]
         fn sub() {
             for (amounts, expected) in [
                 (
@@ -697,7 +699,7 @@ mod tests {
         fn serde() {
             let raw = r#"{"decimalMantissa":123456,"decimalPlaces":3,"floatingPoint":123.456}"#;
             let quantity: Quantity = serde_json::from_str(raw).unwrap();
-            assert_eq!(quantity.0, Decimal::new(123456, 3));
+            assert_eq!(quantity.0, Decimal::new(123_456, 3));
             let quantity = serde_json::to_string(&quantity).unwrap();
             assert_eq!(quantity, raw);
         }
@@ -707,13 +709,14 @@ mod tests {
         use super::*;
 
         #[test]
+        #[allow(clippy::too_many_lines)]
         fn parse() {
             for (raw, expected) in [
                 ("s", Err(ParseAmountError::MissingAmount)),
                 (
                     "1",
                     Ok(Amount {
-                        commodity: "".to_string(),
+                        commodity: String::new(),
                         quantity: Quantity(Decimal::new(1, 0)),
                         style: AmountStyle {
                             commodity_side: Side::Right,
@@ -833,7 +836,7 @@ mod tests {
                 (
                     "1.23",
                     Ok(Amount {
-                        commodity: "".to_string(),
+                        commodity: String::new(),
                         quantity: Quantity(Decimal::new(123, 2)),
                         style: AmountStyle {
                             commodity_side: Side::Right,
@@ -848,8 +851,8 @@ mod tests {
                 (
                     "1,23456780000009",
                     Ok(Amount {
-                        commodity: "".to_string(),
-                        quantity: Quantity(Decimal::new(123456780000009, 14)),
+                        commodity: String::new(),
+                        quantity: Quantity(Decimal::new(123_456_780_000_009, 14)),
                         style: AmountStyle {
                             commodity_side: Side::Right,
                             spaced: false,
@@ -864,7 +867,7 @@ mod tests {
                     "EUR 2.000.000,00",
                     Ok(Amount {
                         commodity: "EUR".to_string(),
-                        quantity: Quantity(Decimal::new(200000000, 2)),
+                        quantity: Quantity(Decimal::new(200_000_000, 2)),
                         style: AmountStyle {
                             commodity_side: Side::Left,
                             spaced: true,
@@ -879,7 +882,7 @@ mod tests {
                     "INR 9,99,99,999.00",
                     Ok(Amount {
                         commodity: "INR".to_string(),
-                        quantity: Quantity(Decimal::new(9999999900, 2)),
+                        quantity: Quantity(Decimal::new(9_999_999_900, 2)),
                         style: AmountStyle {
                             commodity_side: Side::Left,
                             spaced: true,
@@ -893,8 +896,8 @@ mod tests {
                 (
                     "1 000 000.9455",
                     Ok(Amount {
-                        commodity: "".to_string(),
-                        quantity: Quantity(Decimal::new(10000009455, 4)),
+                        commodity: String::new(),
+                        quantity: Quantity(Decimal::new(10_000_009_455, 4)),
                         style: AmountStyle {
                             commodity_side: Side::Right,
                             spaced: false,
@@ -973,7 +976,7 @@ mod tests {
                     }),
                 ),
             ] {
-                assert_eq!(raw.parse::<Amount>(), expected, "failed to parse {}", raw);
+                assert_eq!(raw.parse::<Amount>(), expected, "failed to parse {raw}");
             }
         }
 
@@ -983,7 +986,7 @@ mod tests {
                 (
                     Amount {
                         commodity: "SEK".to_string(),
-                        quantity: Quantity(Decimal::new(1200000, 2)),
+                        quantity: Quantity(Decimal::new(1_200_000, 2)),
                         style: AmountStyle {
                             commodity_side: Side::Right,
                             spaced: true,
@@ -1013,7 +1016,7 @@ mod tests {
                 (
                     Amount {
                         commodity: "SEK".to_string(),
-                        quantity: Quantity(Decimal::new(-1200000, 2)),
+                        quantity: Quantity(Decimal::new(-1_200_000, 2)),
                         style: AmountStyle {
                             commodity_side: Side::Right,
                             spaced: true,
@@ -1043,7 +1046,7 @@ mod tests {
                 (
                     Amount {
                         commodity: "SEK".to_string(),
-                        quantity: Quantity(Decimal::new(-123456, 4)),
+                        quantity: Quantity(Decimal::new(-123_456, 4)),
                         style: AmountStyle {
                             commodity_side: Side::Right,
                             spaced: true,
@@ -1071,7 +1074,7 @@ mod tests {
                     "-12.00 SEK",
                 ),
             ] {
-                assert_eq!(format!("{}", amount), expected);
+                assert_eq!(amount.to_string(), expected);
             }
         }
     }
@@ -1086,10 +1089,10 @@ impl fmt::Display for MixedAmount {
         let result = self
             .0
             .iter()
-            .map(|amount| amount.to_string())
+            .map(ToString::to_string)
             .collect::<Vec<_>>()
             .join(", ");
-        write!(f, "{}", result)
+        write!(f, "{result}")
     }
 }
 
@@ -1216,16 +1219,15 @@ impl AccountName {
 
     pub fn parent(&self) -> Option<Self> {
         if !self.0.contains(':') {
-            None
-        } else {
-            Some(Self(
-                self.0
-                    .split(':')
-                    .take(self.0.split(':').count() - 1)
-                    .collect::<Vec<_>>()
-                    .join(":"),
-            ))
+            return None;
         }
+        Some(Self(
+            self.0
+                .split(':')
+                .take(self.0.split(':').count() - 1)
+                .collect::<Vec<_>>()
+                .join(":"),
+        ))
     }
 }
 
@@ -1356,7 +1358,7 @@ pub struct Posting {
     #[serde(rename = "pcomment")]
     pub comment: String,
     #[serde(rename = "ptype")]
-    pub posting_type: PostingType,
+    pub r#type: PostingType,
     #[serde(rename = "ptags")]
     pub tags: Vec<Tag>,
     #[serde(rename = "pbalanceassertion")]

@@ -72,10 +72,10 @@ impl State {
             if let Some(Ok(version)) = version.ready() {
                 version.to_string()
             } else {
-                "".to_string()
+                String::new()
             }
         } else {
-            "".to_string()
+            String::new()
         }
     }
 
@@ -111,10 +111,8 @@ pub struct Frames {
 
 impl Default for Frames {
     fn default() -> Self {
-        let max_age: f32 = 1.0;
-        let max_len = (max_age * 300.0).round() as usize;
         Self {
-            times: History::new(0..max_len, max_age),
+            times: History::new(2..100, 1.0),
         }
     }
 }

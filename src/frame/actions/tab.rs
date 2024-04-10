@@ -103,7 +103,6 @@ impl Update {
             tab_state.expanded_accounts.insert(account_name.clone());
         }))
         .and_then(Update::recalculate_account_trees())
-        .and_then(Update::recalculate_display_transactions())
     }
 
     pub fn collapse_account(account_name: &hledger::AccountName) -> Self {
@@ -114,7 +113,6 @@ impl Update {
                 .retain(|a| !a.eq(&account_name) && !account_name.is_parent_of(a));
         }))
         .and_then(Update::recalculate_account_trees())
-        .and_then(Update::recalculate_display_transactions())
     }
 
     pub fn set_display_commodity(commodity: Option<&hledger::Commodity>) -> Self {

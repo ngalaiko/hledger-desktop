@@ -1,5 +1,3 @@
-use std::path;
-
 use crate::frame::state::{
     app::{RenderMode, State, Theme, WindowInfo},
     tab as tab_state,
@@ -35,7 +33,7 @@ impl Action {
         }))
     }
 
-    pub fn create_tab(path: path::PathBuf) -> Self {
+    pub fn create_tab(path: std::path::PathBuf) -> Self {
         Action::Persistent(Box::new(move |_, state| {
             let tab = tab_state::State::from(path.clone());
             state.tabs.push(tab);

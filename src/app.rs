@@ -34,7 +34,21 @@ impl eframe::App for App {
             frame.info().cpu_usage,
         )];
 
-        let window_info: WindowInfo = frame.info().window_info.into();
+        let window_info: WindowInfo = ctx.input(|i| {
+            let viewport = i.viewport();
+            let mut window_info = WindowInfo::default();
+            if let Some(maximized) = viewport.maximized {
+                window_info.maximized = maximized;
+            }
+            if let Some(fullscreen) = viewport.fullscreen {
+                window_info.fullscreen = fullscreen;
+            }
+            if let Some(size) = viewport.inner_rect {
+                window_info.size = [size.size().x, size.size().y];
+            }
+            window_info.position = viewport.outer_rect.map(|rect| [rect.min.x, rect.min.y]);
+            window_info
+        });
         if window_info != self.state.window {
             before_render_updates.push(Action::window(&window_info));
         }
@@ -68,16 +82,5 @@ impl eframe::App for App {
 
     fn on_exit(&mut self, _: Option<&eframe::glow::Context>) {
         futures::executor::block_on(self.manager.shutdown());
-    }
-}
-
-impl From<eframe::WindowInfo> for WindowInfo {
-    fn from(value: eframe::WindowInfo) -> Self {
-        Self {
-            position: value.position.map(Into::into),
-            size: [value.size.x, value.size.y],
-            fullscreen: value.fullscreen,
-            maximized: value.maximized,
-        }
     }
 }

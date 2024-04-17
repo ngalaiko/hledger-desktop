@@ -9,11 +9,11 @@ license = "GPL-3.0-only"
 
 [dependencies]
 chrono = { version = "0.4", features = [ "serde" ] }
-eframe = "0.22"
-egui-modal = "0.2"
-egui-phosphor = "0.2"
-egui_autocomplete = "0.2"
-egui_extras = { version = "0.22", features = [ "chrono" ] }
+eframe = "0.27"
+egui-modal = "0.3"
+egui-phosphor = "0.5"
+egui_autocomplete = "6.0"
+egui_extras = { version = "0.27", features = [ "chrono" ] }
 futures = "0.3"
 lazy_static = "1.4"
 poll-promise = { version = "0.3", features = [ "tokio" ] }

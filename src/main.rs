@@ -4,11 +4,11 @@ mod frame;
 mod hledger;
 mod widgets;
 
-use std::process::exit;
+use std::{process::exit, sync::Arc};
 
 use app::App;
 
-use eframe::{epaint::vec2, IconData};
+use eframe::icon_data::from_png_bytes;
 use tracing::{metadata::LevelFilter, subscriber::set_global_default};
 use tracing_subscriber::{fmt::format::FmtSpan, layer::SubscriberExt, Layer};
 
@@ -25,17 +25,20 @@ async fn main() {
         .unwrap_or_default();
 
     let native_options = eframe::NativeOptions {
-        initial_window_size: Some(vec2(state.window.size[0], state.window.size[1])),
-        initial_window_pos: state.window.position.map(Into::into),
-        fullscreen: state.window.fullscreen,
-        maximized: state.window.maximized,
-        drag_and_drop_support: true,
-        #[cfg(target_os = "macos")]
-        fullsize_content: true,
-        icon_data: Some(
-            IconData::try_from_png_bytes(&include_bytes!("../assets/icon.png")[..])
-                .expect("failed to parse icon"),
-        ),
+        viewport: eframe::egui::ViewportBuilder {
+            fullscreen: Some(state.window.fullscreen),
+            maximized: Some(state.window.maximized),
+            inner_size: Some(state.window.size.into()),
+            position: state.window.position.map(Into::into),
+            fullsize_content_view: Some(true),
+            titlebar_shown: Some(false),
+            icon: Some(Arc::new(
+                from_png_bytes(&include_bytes!("../assets/icon.png")[..])
+                    .expect("failed to parse icon"),
+            )),
+            ..Default::default()
+        },
+        follow_system_theme: true,
         ..Default::default()
     };
 

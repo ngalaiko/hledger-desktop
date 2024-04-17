@@ -1,7 +1,8 @@
 use std::fmt;
 
-use eframe::egui::{
-    epaint::RectShape, pos2, vec2, Response, Sense, Shape, Ui, WidgetInfo, WidgetType,
+use eframe::{
+    egui::{epaint::RectShape, pos2, vec2, Response, Sense, Shape, Ui, WidgetInfo, WidgetType},
+    epaint::{Rect, TextureId},
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, serde::Serialize, serde::Deserialize)]
@@ -34,6 +35,8 @@ pub fn ui(ui: &mut Ui, state: &mut CheckboxState) -> Response {
             rounding: visuals.rounding,
             fill: visuals.bg_fill,
             stroke: visuals.bg_stroke,
+            fill_texture_id: TextureId::default(),
+            uv: Rect::ZERO,
         });
 
         match *state {

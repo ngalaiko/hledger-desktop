@@ -560,7 +560,7 @@ fn tabs_list(ui: &mut Ui, state: &State) -> Vec<StateUpdate> {
                         ui.close_menu();
                     }
                 })
-                .clicked()
+                .is_some()
             {
                 new_selected.replace(tab_index);
             }
@@ -714,8 +714,8 @@ fn transactions_ui(ui: &mut Ui, transactions: &[hledger::Transaction]) {
         .columns(Column::exact(left_width / 2.0), 2)
         .column(Column::exact(price_width))
         .body(|body| {
-            body.heterogeneous_rows(heights.into_iter(), |row_index, mut row| {
-                let transaction = &transactions[row_index];
+            body.heterogeneous_rows(heights.into_iter(), |mut row| {
+                let transaction = &transactions[row.index()];
                 row.col(|ui| {
                     ui.add(
                         Label::new(RichText::new(transaction.date.to_string()).monospace())

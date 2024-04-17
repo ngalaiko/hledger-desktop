@@ -1,7 +1,6 @@
 use std::{path, string, sync::Arc};
 
 use reqwest::{Client, Method};
-use tauri::AppHandle;
 use tracing::instrument;
 
 use super::{process, types};
@@ -32,11 +31,8 @@ pub struct HLedgerWeb {
 }
 
 impl HLedgerWeb {
-    pub async fn new<P: AsRef<path::Path>>(
-        handle: &AppHandle,
-        file_path: P,
-    ) -> Result<Self, Error> {
-        let inner = HLedgerWebInner::new(handle, file_path).await?;
+    pub async fn new<P: AsRef<path::Path>>(file_path: P) -> Result<Self, Error> {
+        let inner = HLedgerWebInner::new(file_path).await?;
         Ok(Self {
             inner: Arc::new(inner),
         })
@@ -71,13 +67,10 @@ struct HLedgerWebInner {
 }
 
 impl HLedgerWebInner {
-    pub async fn new<P: AsRef<path::Path>>(
-        handle: &AppHandle,
-        file_path: P,
-    ) -> Result<Self, Error> {
+    pub async fn new<P: AsRef<path::Path>>(file_path: P) -> Result<Self, Error> {
         let file_path = file_path.as_ref();
         Ok(Self {
-            process: process::HLedgerWeb::new(handle, file_path)
+            process: process::HLedgerWeb::new(file_path)
                 .await
                 .map_err(Error::Process)?,
             file_path: file_path.to_path_buf(),

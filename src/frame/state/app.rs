@@ -1,9 +1,8 @@
-use std::fs;
+use std::env::{self, VarError};
 
+use eframe::egui::util::History;
 use poll_promise::Promise;
 use serde::{Deserialize, Serialize};
-use tauri::{AppHandle, Manager};
-use tauri_egui::egui::util::History;
 use tracing::instrument;
 
 use crate::hledger::{version, ExecError};
@@ -46,24 +45,9 @@ pub enum StateError {
     #[error(transparent)]
     Io(#[from] std::io::Error),
     #[error(transparent)]
-    TauriPathError(#[from] tauri::path::Error),
+    Var(#[from] std::env::VarError),
     #[error(transparent)]
     Serde(#[from] serde_json::Error),
-}
-
-impl TryFrom<&AppHandle> for State {
-    type Error = StateError;
-
-    fn try_from(value: &AppHandle) -> Result<Self, Self::Error> {
-        let state = Self::load(value)?;
-        Ok(State {
-            hledger_version: Some(Promise::spawn_async({
-                let handle = value.clone();
-                async move { version(&handle).await }
-            })),
-            ..state
-        })
-    }
 }
 
 impl State {
@@ -80,10 +64,10 @@ impl State {
     }
 
     #[instrument(skip_all)]
-    pub fn save(&self, handle: &AppHandle) -> Result<(), StateError> {
-        let local_data_dir = handle.path().app_local_data_dir()?;
-        fs::create_dir_all(&local_data_dir)?;
-        let file = fs::File::options()
+    pub fn save(&self) -> Result<(), StateError> {
+        let local_data_dir = local_data_dir()?;
+        std::fs::create_dir_all(&local_data_dir)?;
+        let file = std::fs::File::options()
             .write(true)
             .create(true)
             .truncate(true)
@@ -93,16 +77,23 @@ impl State {
     }
 
     #[instrument(skip_all)]
-    fn load(handle: &AppHandle) -> Result<Self, StateError> {
-        let local_data_dir = handle.path().app_local_data_dir()?;
+    pub fn load() -> Result<Self, StateError> {
+        let local_data_dir = local_data_dir()?;
         let path = local_data_dir.join("state.json");
         if !path.exists() {
             return Ok(Self::default());
         }
-        let file = fs::File::open(path)?;
-        let state = serde_json::from_reader(file)?;
+        let file = std::fs::File::open(path)?;
+        let mut state: State = serde_json::from_reader(file)?;
+        state.hledger_version = Some(Promise::spawn_async(version()));
         Ok(state)
     }
+}
+
+fn local_data_dir() -> Result<std::path::PathBuf, VarError> {
+    let home = env::var("HOME")?;
+    let home = std::path::PathBuf::from(home);
+    Ok(home.join("Library/Application Support/rocks.galaiko.hledger.desktop"))
 }
 
 pub struct Frames {

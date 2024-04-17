@@ -2,7 +2,6 @@ use std::collections::HashSet;
 
 use futures::FutureExt;
 use poll_promise::Promise;
-use tauri::Manager;
 use tokio::join;
 
 use crate::{
@@ -22,20 +21,20 @@ impl From<new_transaction::Update> for Update {
     fn from(value: new_transaction::Update) -> Self {
         match value {
             new_transaction::Update::Ephemeral(update) => {
-                Update::Ephemeral(Box::new(move |handle, tab_state| {
+                Update::Ephemeral(Box::new(move |manager, tab_state| {
                     if let Some(ref mut new_transaction_modal_state) =
                         tab_state.new_transaction_modal
                     {
-                        update(handle, new_transaction_modal_state);
+                        update(manager, new_transaction_modal_state);
                     }
                 }))
             }
             new_transaction::Update::Persistent(update) => {
-                Update::Persistent(Box::new(move |handle, tab_state| {
+                Update::Persistent(Box::new(move |manager, tab_state| {
                     if let Some(ref mut new_transaction_modal_state) =
                         tab_state.new_transaction_modal
                     {
-                        update(handle, new_transaction_modal_state);
+                        update(manager, new_transaction_modal_state);
                     }
                 }))
             }
@@ -124,12 +123,10 @@ impl Update {
     }
 
     pub fn load_commodities() -> Self {
-        Update::Ephemeral(Box::new(move |handle, tab_state| {
+        Update::Ephemeral(Box::new(move |manager, tab_state| {
             if tab_state.commodities.is_some() {
                 return;
             }
-            let manager = handle.state::<hledger::Manager>().inner().clone();
-
             let file_path = tab_state.file_path.clone();
             let manager = manager.clone();
             tab_state.commodities = Some(Promise::spawn_async({
@@ -155,11 +152,10 @@ impl Update {
     }
 
     pub fn load_transactions() -> Self {
-        Update::Ephemeral(Box::new(move |handle, tab_state| {
+        Update::Ephemeral(Box::new(move |manager, tab_state| {
             if tab_state.transactions.is_some() {
                 return;
             }
-            let manager = handle.state::<hledger::Manager>().inner().clone();
 
             let load_prices_future = {
                 let file_path = tab_state.file_path.clone();
@@ -223,11 +219,10 @@ impl Update {
     }
 
     pub fn load_account_trees() -> Self {
-        Update::Ephemeral(Box::new(move |handle, tab_state| {
+        Update::Ephemeral(Box::new(move |manager, tab_state| {
             if tab_state.accounts_tree.is_some() {
                 return;
             }
-            let manager = handle.state::<hledger::Manager>().inner().clone();
 
             let load_accounts_future = {
                 let file_path = tab_state.file_path.clone();

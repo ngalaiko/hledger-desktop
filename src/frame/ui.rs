@@ -1,13 +1,11 @@
-use std::{path, str};
-
-use egui_autocomplete::AutoCompleteTextEdit;
-use egui_extras::{Column, DatePickerButton, TableBuilder};
-use egui_modal::Modal;
-use tauri_egui::egui::{
+use eframe::egui::{
     collapsing_header, vec2, Align, Button, CentralPanel, ComboBox, Context, Hyperlink, Id, Label,
     Layout, RichText, ScrollArea, Sense, SidePanel, TextEdit, TextStyle, TopBottomPanel, Ui,
     Visuals,
 };
+use egui_autocomplete::AutoCompleteTextEdit;
+use egui_extras::{Column, DatePickerButton, TableBuilder};
+use egui_modal::Modal;
 
 use crate::{
     hledger,
@@ -201,28 +199,27 @@ fn tab_ui(ui: &mut Ui, tab_state: &TabState) -> Vec<TabStateUpdate> {
                         ..
                     }))),
                 ) => {
-                    let mut message = str::from_utf8(message).unwrap();
                     ui.add(
-                        TextEdit::multiline(&mut message)
+                        TextEdit::multiline(&mut message.as_str())
                             .desired_width(f32::INFINITY)
                             .font(TextStyle::Monospace),
                     );
                     vec![]
                 }
                 (
-                    Some(Err(hledger::Error::Process(hledger::ProcessError::FailedToSpawn(_)))),
+                    Some(Err(hledger::Error::Process(hledger::ProcessError::FailedToRun(_)))),
                     _,
                     _,
                 )
                 | (
                     _,
-                    Some(Err(hledger::Error::Process(hledger::ProcessError::FailedToSpawn(_)))),
+                    Some(Err(hledger::Error::Process(hledger::ProcessError::FailedToRun(_)))),
                     _,
                 )
                 | (
                     _,
                     _,
-                    Some(Err(hledger::Error::Process(hledger::ProcessError::FailedToSpawn(_)))),
+                    Some(Err(hledger::Error::Process(hledger::ProcessError::FailedToRun(_)))),
                 ) => {
                     ui.vertical_centered(|ui| {
                         ui.heading("Failed to spawn hledger-web :(");
@@ -533,7 +530,9 @@ fn welcome_screen_ui(ui: &mut Ui) -> Vec<StateUpdate> {
             }
         }
 
-        let default_file = std::env::var("LEDGER_FILE").map(path::PathBuf::from).ok();
+        let default_file = std::env::var("LEDGER_FILE")
+            .map(std::path::PathBuf::from)
+            .ok();
         if let Some(default_file) = default_file {
             let default_file_name = default_file.file_name().unwrap().to_str().unwrap();
             if ui.button(format!("Open {default_file_name}")).clicked() {

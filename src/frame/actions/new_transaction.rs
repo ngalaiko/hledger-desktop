@@ -2,7 +2,6 @@ use std::{collections::HashSet, path};
 
 use chrono::NaiveDate;
 use poll_promise::Promise;
-use tauri::Manager;
 
 use crate::{
     frame::state::new_transaction::{Error, PostingState, State},
@@ -61,9 +60,9 @@ impl Update {
     pub fn create_transaction(file_path: &path::Path, transaction: &hledger::Transaction) -> Self {
         let file_path = file_path.to_path_buf();
         let transaction = transaction.clone();
-        Self::Ephemeral(Box::new(move |handle, state| {
+        Self::Ephemeral(Box::new(move |manager, state| {
+            let manager = manager.clone();
             state.creating = Some(Promise::spawn_async({
-                let manager = handle.state::<hledger::Manager>().inner().clone();
                 let transaction = transaction.clone();
                 let file_path = file_path.clone();
                 async move {

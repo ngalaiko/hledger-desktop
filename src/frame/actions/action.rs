@@ -1,6 +1,6 @@
-use tauri::AppHandle;
+use crate::hledger;
 
-type StateUpdateFn<T> = Box<dyn Fn(&AppHandle, &mut T)>;
+type StateUpdateFn<T> = Box<dyn Fn(&hledger::Manager, &mut T)>;
 
 pub enum StateAction<T> {
     Persistent(StateUpdateFn<T>),
@@ -17,27 +17,27 @@ impl<T: 'static> StateAction<T> {
     pub fn and_then(self, other: StateAction<T>) -> StateAction<T> {
         match (self, other) {
             (StateAction::Persistent(f1), StateAction::Persistent(f2)) => {
-                StateAction::Persistent(Box::new(move |handle, state| {
-                    f1(handle, state);
-                    f2(handle, state);
+                StateAction::Persistent(Box::new(move |manager, state| {
+                    f1(manager, state);
+                    f2(manager, state);
                 }))
             }
             (StateAction::Persistent(f1), StateAction::Ephemeral(f2)) => {
-                StateAction::Persistent(Box::new(move |handle, state| {
-                    f1(handle, state);
-                    f2(handle, state);
+                StateAction::Persistent(Box::new(move |manager, state| {
+                    f1(manager, state);
+                    f2(manager, state);
                 }))
             }
             (StateAction::Ephemeral(f1), StateAction::Persistent(f2)) => {
-                StateAction::Persistent(Box::new(move |handle, state| {
-                    f1(handle, state);
-                    f2(handle, state);
+                StateAction::Persistent(Box::new(move |manager, state| {
+                    f1(manager, state);
+                    f2(manager, state);
                 }))
             }
             (StateAction::Ephemeral(f1), StateAction::Ephemeral(f2)) => {
-                StateAction::Ephemeral(Box::new(move |handle, state| {
-                    f1(handle, state);
-                    f2(handle, state);
+                StateAction::Ephemeral(Box::new(move |manager, state| {
+                    f1(manager, state);
+                    f2(manager, state);
                 }))
             }
         }

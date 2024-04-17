@@ -1,13 +1,18 @@
-use std::{fmt, io, path, str, sync::Arc};
+use std::{
+    fmt, io, path,
+    process::{ExitStatus, Stdio},
+    str,
+    sync::Arc,
+};
 
 use rand::Rng;
-use tauri::{async_runtime, AppHandle};
-use tauri_plugin_shell::{
-    process::{CommandChild, CommandEvent},
-    ShellExt,
+
+use tokio::{
+    io::{AsyncBufReadExt, BufReader},
+    select,
+    sync::watch,
+    task::JoinHandle,
 };
-use tokio::{select, sync::watch};
-use tokio_util::sync::CancellationToken;
 use tracing::instrument;
 use url::Url;
 
@@ -15,20 +20,13 @@ use url::Url;
 pub enum Error {
     #[error("hledger-web not found")]
     NotFound,
-    #[error("failed to execute hledger-web: {code:?}: {message:?}")]
-    Exec { code: Option<i32>, message: Vec<u8> },
-    #[error("failed to spawn hledger-web: {0}")]
-    FailedToSpawn(Arc<tauri_plugin_shell::Error>),
-    #[error("failed to stop hledger-web: {0}")]
-    FailedToStop(Arc<tauri_plugin_shell::Error>),
-    #[error("{0}")]
-    CommandEvent(String),
-    #[error("hledger-web terminated. code: {code:?}, signal: {signal:?}")]
+    #[error("failed to execute hledger-web: {exit_status:?} {message}")]
     Terminated {
-        code: Option<i32>,
-        signal: Option<i32>,
-        message: Vec<u8>,
+        exit_status: ExitStatus,
+        message: String,
     },
+    #[error("failed to spawn hledger-web: {0}")]
+    FailedToRun(Arc<io::Error>),
 }
 
 #[derive(Debug, Clone)]
@@ -52,25 +50,17 @@ impl fmt::Display for State {
 #[derive(Debug)]
 pub struct HLedgerWeb {
     endpoint: Url,
-    state: (Arc<watch::Sender<State>>, watch::Receiver<State>),
-    cancel_token: CancellationToken,
 }
 
 impl HLedgerWeb {
-    pub async fn new<P: AsRef<path::Path>>(
-        handle: &AppHandle,
-        file_path: P,
-    ) -> Result<Self, Error> {
+    pub async fn new<P: AsRef<path::Path>>(file_path: P) -> Result<Self, Error> {
         let file_path = file_path.as_ref().to_path_buf();
         let port = rand::thread_rng().gen_range(32768..65536);
         let endpoint =
             Url::parse(format!("http://localhost:{port}").as_str()).expect("failed to parse url");
         let (state_tx, mut state_rx) = watch::channel(State::Starting);
         let state_tx = Arc::new(state_tx);
-        let cancel_token = CancellationToken::new();
-        let c_cancel_token = cancel_token.clone();
-        let _handle: async_runtime::JoinHandle<Result<(), Error>> = tauri::async_runtime::spawn({
-            let handle = handle.clone();
+        let _handle: JoinHandle<Result<(), Error>> = tokio::spawn({
             let state_tx = state_tx.clone();
             let span = tracing::span!(
                 tracing::Level::INFO,
@@ -87,59 +77,63 @@ impl HLedgerWeb {
 
                 send_state(State::Starting);
 
-                let mut stderr = vec![];
-
-                match spawn(&handle, &file_path, &port).await {
+                match spawn(&file_path, &port).await {
                     Err(error) => {
                         send_state(State::Stopped(Some(error.clone())));
                         Err(error)
                     }
-                    Ok((mut rx, child)) => loop {
-                        select! {
-                            () = c_cancel_token.cancelled() => match child.kill() {
-                                Ok(()) => {
-                                    send_state(State::Stopped(None));
-                                    return Ok(());
-                                }
-                                Err(error) => {
-                                    let error = Arc::new(error);
-                                    send_state(State::Stopped(Some(Error::FailedToStop(error.clone()))));
-                                    return Err(Error::FailedToStop(error));
-                                }
-                            },
-                            Some(event) = rx.recv() => match event {
-                                CommandEvent::Stdout(line) => {
-                                    let line = str::from_utf8(&line).unwrap();
+                    Ok(mut child) => {
+                        let stdout = child
+                            .stdout
+                            .take()
+                            .expect("child did not have a handle to stdout");
+                        let stderr = child
+                            .stderr
+                            .take()
+                            .expect("child did not have a handle to stdout");
+
+                        let mut stdout_reader = BufReader::new(stdout).lines();
+                        let mut stderr_reader = BufReader::new(stderr).lines();
+
+                        loop {
+                            select! {
+                                line = stdout_reader.next_line() => {
+                                    let Ok(Some(line)) = line else {
+                                        continue;
+                                    };
                                     tracing::debug!(line);
                                     if line.eq("Press ctrl-c to quit") {
                                         send_state(State::Running);
                                     }
+                                },
+                                exit_code = child.wait() => {
+                                    match exit_code {
+                                        Ok(exit_code) if exit_code.success() => {
+                                            send_state(State::Stopped(None));
+                                            return Ok(());
+                                        }
+                                        Ok(exit_status) => {
+                                            let mut message = vec![];
+                                            while let Ok(Some(line)) = stderr_reader.next_line().await {
+                                                message.push(line);
+                                            }
+                                            let error = Error::Terminated{
+                                                exit_status,
+                                                message: message.join("\n")
+                                            };
+                                            send_state(State::Stopped(Some(error.clone())));
+                                            return Err(error);
+                                        }
+                                        Err(error) => {
+                                            let error = Arc::new(error);
+                                            send_state(State::Stopped(Some(Error::FailedToRun(error.clone()))));
+                                            return Err(Error::FailedToRun(error))
+                                        }
+                                    }
                                 }
-                                CommandEvent::Stderr(line) => {
-                                    let line = str::from_utf8(&line).unwrap();
-                                    stderr.extend_from_slice(line.as_bytes());
-                                    stderr.push(b'\n');
-                                }
-                                CommandEvent::Error(error) => {
-                                    send_state(State::Stopped(Some(Error::CommandEvent(error.clone()))));
-                                    return Err(Error::CommandEvent(error));
-                                }
-                                CommandEvent::Terminated(payload) => {
-                                    send_state(State::Stopped(Some(Error::Terminated{
-                                        code: payload.code,
-                                        signal: payload.signal,
-                                        message: stderr.clone(),
-                                    })));
-                                    return Err(Error::Terminated{
-                                        code: payload.code,
-                                        signal: payload.signal,
-                                        message: stderr,
-                            });
-                                }
-                                _ => {}
                             }
                         }
-                    },
+                    }
                 }
             }
         });
@@ -152,23 +146,7 @@ impl HLedgerWeb {
             }
         }
 
-        Ok(Self {
-            endpoint,
-            state: (state_tx, state_rx),
-            cancel_token,
-        })
-    }
-
-    pub async fn stop(&mut self) -> Result<(), Error> {
-        self.cancel_token.cancel();
-        while self.state.1.changed().await.is_ok() {
-            match self.state.1.borrow().clone() {
-                State::Stopped(None) => return Ok(()),
-                State::Stopped(Some(error)) => return Err(error),
-                _ => {}
-            }
-        }
-        unreachable!()
+        Ok(Self { endpoint })
     }
 
     pub fn endpoint(&self) -> &Url {
@@ -176,20 +154,8 @@ impl HLedgerWeb {
     }
 }
 
-impl Drop for HLedgerWeb {
-    fn drop(&mut self) {
-        if let Err(e) = futures::executor::block_on(self.stop()) {
-            tracing::error!("hledger-web: failed to stop: {}", e);
-        }
-    }
-}
-
-#[instrument(skip(handle, path))]
-async fn spawn(
-    handle: &AppHandle,
-    path: &path::Path,
-    port: &usize,
-) -> Result<(tauri::async_runtime::Receiver<CommandEvent>, CommandChild), Error> {
+#[instrument(skip(path))]
+async fn spawn(path: &path::Path, port: &usize) -> Result<tokio::process::Child, Error> {
     let args = [
         "--infer-costs".to_string(),
         "--infer-market-prices".to_string(),
@@ -200,41 +166,41 @@ async fn spawn(
         "--serve-api".to_string(),
     ];
 
-    handle
-        .shell()
-        .sidecar("hledger-web")
-        .expect("sidecar is always present")
+    tokio::process::Command::new("hledger-web")
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .kill_on_drop(true)
         .args(args)
         .spawn()
-        .map_err(|error| match error {
-            tauri_plugin_shell::Error::Io(ref io_error) => {
-                if io_error.kind() == io::ErrorKind::NotFound {
-                    Error::NotFound
-                } else {
-                    Error::FailedToSpawn(Arc::new(error))
-                }
+        .map_err(|error| {
+            if error.kind() == io::ErrorKind::NotFound {
+                Error::NotFound
+            } else {
+                Error::FailedToRun(Arc::new(error))
             }
-            error => Error::FailedToSpawn(Arc::new(error)),
         })
 }
 
-#[instrument(skip(handle))]
-pub async fn exec(handle: &AppHandle, args: &[&str]) -> Result<Vec<u8>, Error> {
-    let output = handle
-        .shell()
-        .sidecar("hledger-web")
-        .expect("sidecar is always present")
+#[instrument]
+pub async fn exec(args: &[&str]) -> Result<Vec<u8>, Error> {
+    let output = tokio::process::Command::new("hledger-web")
         .args(args)
         .output()
         .await
-        .map_err(|error| Error::FailedToSpawn(Arc::new(error)))?;
+        .map_err(|error| {
+            if error.kind() == io::ErrorKind::NotFound {
+                Error::NotFound
+            } else {
+                Error::FailedToRun(Arc::new(error))
+            }
+        })?;
 
     if output.status.success() {
         Ok(output.stdout)
     } else {
-        Err(Error::Exec {
-            code: output.status.code(),
-            message: output.stderr,
+        Err(Error::Terminated {
+            exit_status: output.status,
+            message: String::from_utf8(output.stderr).expect("failed to parse stderr as utf8"),
         })
     }
 }

@@ -1,6 +1,6 @@
 use std::fmt;
 
-use tauri_egui::egui::{
+use eframe::egui::{
     epaint::RectShape, pos2, vec2, Response, Sense, Shape, Ui, WidgetInfo, WidgetType,
 };
 

@@ -1,6 +1,6 @@
 # hledger-desktop
 
-desktop app for [hledger][] built with [tauri][] and [egui][]
+desktop app for [hledger][] built with [egui][]
 
 ## roadmap
 
@@ -16,6 +16,5 @@ cargo run
 ```
 
 [hledger]: https://github.com/simonmichael/hledger
-[tauri]: https://github.com/tauri-apps/tauri
 [egui]: https://github.com/emilk/egui
 [hledger-web]: https://github.com/simonmichael/hledger/tree/master/hledger-web

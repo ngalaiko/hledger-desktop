@@ -57,12 +57,12 @@ impl Action {
     pub fn update_tab(index: usize, update: tab::Update) -> Self {
         match update {
             tab::Update::Persistent(update) => {
-                Action::Persistent(Box::new(move |handle, state| {
-                    update(handle, &mut state.tabs[index]);
+                Action::Persistent(Box::new(move |manager, state| {
+                    update(manager, &mut state.tabs[index]);
                 }))
             }
-            tab::Update::Ephemeral(update) => Action::Ephemeral(Box::new(move |handle, state| {
-                update(handle, &mut state.tabs[index]);
+            tab::Update::Ephemeral(update) => Action::Ephemeral(Box::new(move |manager, state| {
+                update(manager, &mut state.tabs[index]);
             })),
         }
     }

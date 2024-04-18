@@ -9,6 +9,7 @@ license = "GPL-3.0-only"
 
 [dependencies]
 chrono = { version = "0.4", features = [ "serde" ] }
+directories-next = "2.0.0"
 eframe = "0.27"
 egui-modal = "0.3"
 egui-phosphor = "0.5"

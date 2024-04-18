@@ -1,5 +1,3 @@
-use std::env::{self, VarError};
-
 use eframe::egui::util::History;
 use poll_promise::Promise;
 use serde::{Deserialize, Serialize};
@@ -45,8 +43,6 @@ pub enum StateError {
     #[error(transparent)]
     Io(#[from] std::io::Error),
     #[error(transparent)]
-    Var(#[from] std::env::VarError),
-    #[error(transparent)]
     Serde(#[from] serde_json::Error),
 }
 
@@ -90,10 +86,13 @@ impl State {
     }
 }
 
-fn local_data_dir() -> Result<std::path::PathBuf, VarError> {
-    let home = env::var("HOME")?;
-    let home = std::path::PathBuf::from(home);
-    Ok(home.join("Library/Application Support/rocks.galaiko.hledger.desktop"))
+fn local_data_dir() -> Result<std::path::PathBuf, std::io::Error> {
+    directories_next::ProjectDirs::from("", "", "rocks.galaiko.hledger.desktop")
+        .map(|proj_dirs| proj_dirs.data_dir().to_path_buf())
+        .ok_or(std::io::Error::new(
+            std::io::ErrorKind::NotFound,
+            "local data directory not found",
+        ))
 }
 
 pub struct Frames {

@@ -1,9 +1,9 @@
 use eframe::egui::util::History;
-use poll_promise::Promise;
 use serde::{Deserialize, Serialize};
 use tracing::instrument;
 
 use crate::hledger::{version, ExecError};
+use crate::promise::Promise;
 
 use super::tab;
 
@@ -19,7 +19,7 @@ pub struct State {
     #[serde(skip)]
     pub render_mode: RenderMode,
     #[serde(skip)]
-    pub hledger_version: Option<Promise<Result<String, ExecError>>>,
+    pub hledger_version: Promise<Result<String, ExecError>>,
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -48,12 +48,8 @@ pub enum StateError {
 
 impl State {
     pub fn version(&self) -> String {
-        if let Some(version) = self.hledger_version.as_ref() {
-            if let Some(Ok(version)) = version.ready() {
-                version.to_string()
-            } else {
-                String::new()
-            }
+        if let Some(Ok(version)) = self.hledger_version.ready() {
+            version.to_string()
         } else {
             String::new()
         }
@@ -81,7 +77,7 @@ impl State {
         }
         let file = std::fs::File::open(path)?;
         let mut state: State = serde_json::from_reader(file)?;
-        state.hledger_version = Some(Promise::spawn_async(version()));
+        state.hledger_version = Promise::spawn_async(version());
         Ok(state)
     }
 }

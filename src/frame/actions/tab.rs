@@ -1,7 +1,6 @@
 use std::collections::HashSet;
 
 use futures::FutureExt;
-use poll_promise::Promise;
 use tokio::join;
 
 use crate::{
@@ -11,6 +10,7 @@ use crate::{
         tab::{AccountTreeNode, State},
     },
     hledger,
+    promise::Promise,
 };
 
 use super::{action::StateAction, new_transaction};
@@ -45,12 +45,10 @@ impl From<new_transaction::Update> for Update {
 impl Update {
     pub fn open_new_transaction_modal() -> Self {
         Update::Ephemeral(Box::new(move |_, tab_state| {
-            if let Some(transactions) = tab_state.transactions.as_mut().and_then(|transactions| {
-                match transactions.ready() {
-                    None | Some(Err(_)) => None,
-                    Some(Ok(transactions)) => Some(transactions),
-                }
-            }) {
+            if let Some(transactions) = match tab_state.transactions.ready() {
+                None | Some(Err(_)) => None,
+                Some(Ok(transactions)) => Some(transactions),
+            } {
                 tab_state.new_transaction_modal =
                     Some(new_transaction_state::State::from(transactions));
             }
@@ -129,7 +127,7 @@ impl Update {
             }
             let file_path = tab_state.file_path.clone();
             let manager = manager.clone();
-            tab_state.commodities = Some(Promise::spawn_async({
+            tab_state.commodities = Promise::spawn_async({
                 async move {
                     let client = manager.client(file_path).await?;
                     let commodities = client.commodities().await?;
@@ -139,14 +137,14 @@ impl Update {
                         .collect::<Vec<_>>();
                     Ok(commodities)
                 }
-            }));
+            });
         }))
     }
 
     pub fn reload_transactions() -> Self {
         Update::Ephemeral(Box::new(move |_, tab_state| {
-            tab_state.transactions = None;
-            tab_state.display_transactions = None;
+            tab_state.transactions = Promise::default();
+            tab_state.display_transactions = Promise::default();
         }))
         .and_then(Update::load_transactions())
     }
@@ -167,7 +165,7 @@ impl Update {
                 }
             }
             .shared();
-            tab_state.prices = Some(Promise::spawn_async(load_prices_future.clone()));
+            tab_state.prices = Promise::spawn_async(load_prices_future.clone());
 
             let load_transactions_future = {
                 let file_path = tab_state.file_path.clone();
@@ -179,7 +177,7 @@ impl Update {
                 }
             }
             .shared();
-            tab_state.transactions = Some(Promise::spawn_async(load_transactions_future.clone()));
+            tab_state.transactions = Promise::spawn_async(load_transactions_future.clone());
 
             let load_converter_future = {
                 let load_transactions_future = load_transactions_future.clone();
@@ -192,9 +190,9 @@ impl Update {
                 }
             }
             .shared();
-            tab_state.converter = Some(Promise::spawn_async(load_converter_future.clone()));
+            tab_state.converter = Promise::spawn_async(load_converter_future.clone());
 
-            tab_state.display_transactions = Some(Promise::spawn_async({
+            tab_state.display_transactions = Promise::spawn_async({
                 let unchecked_accounts = tab_state.unchecked_accounts.clone();
                 let display_commodity = tab_state.display_commodity.clone();
                 async move {
@@ -214,7 +212,7 @@ impl Update {
                         .collect::<Vec<_>>();
                     Ok(transactions)
                 }
-            }));
+            });
         }))
     }
 
@@ -235,8 +233,8 @@ impl Update {
             }
             .shared();
 
-            tab_state.accounts = Some(Promise::spawn_async(load_accounts_future.clone()));
-            tab_state.accounts_tree = Some(Promise::spawn_async({
+            tab_state.accounts = Promise::spawn_async(load_accounts_future.clone());
+            tab_state.accounts_tree = Promise::spawn_async({
                 let expanded_accounts = tab_state.expanded_accounts.clone();
                 let unchecked_accounts = tab_state.unchecked_accounts.clone();
                 async move {
@@ -249,32 +247,26 @@ impl Update {
                     );
                     Ok(trees)
                 }
-            }));
+            });
         }))
     }
 
     fn recalculate_display_transactions() -> Self {
         Update::Ephemeral(Box::new(|_, tab_state| {
-            let transactions = tab_state.transactions.as_mut().and_then(|transactions| {
-                match transactions.ready() {
-                    None | Some(Err(_)) => None,
-                    Some(Ok(transactions)) => Some(transactions.clone()),
-                }
-            });
+            let transactions = match tab_state.transactions.ready() {
+                None | Some(Err(_)) => None,
+                Some(Ok(transactions)) => Some(transactions.clone()),
+            };
 
-            let converter =
-                tab_state
-                    .converter
-                    .as_mut()
-                    .and_then(|converter| match converter.ready() {
-                        None | Some(Err(_)) => None,
-                        Some(Ok(converter)) => Some(converter.clone()),
-                    });
+            let converter = match tab_state.converter.ready() {
+                None | Some(Err(_)) => None,
+                Some(Ok(converter)) => Some(converter.clone()),
+            };
 
             if let (Some(trasnsactions), Some(converter)) = (transactions, converter) {
                 let unchecked_accounts = tab_state.unchecked_accounts.clone();
                 let display_commodity = tab_state.display_commodity.clone();
-                tab_state.display_transactions = Some(Promise::spawn_blocking(move || {
+                tab_state.display_transactions = Promise::spawn_blocking(move || {
                     let display_transactions = trasnsactions
                         .iter()
                         .filter_map(|transaction| {
@@ -287,29 +279,24 @@ impl Update {
                         })
                         .collect::<Vec<_>>();
                     Ok(display_transactions)
-                }));
+                });
             }
         }))
     }
 
     fn recalculate_account_trees() -> Self {
         Update::Ephemeral(Box::new(|_, tab_state| {
-            if let Some(accounts) =
-                tab_state
-                    .accounts
-                    .as_mut()
-                    .and_then(|account_trees| match account_trees.ready() {
-                        None | Some(Err(_)) => None,
-                        Some(Ok(accounts)) => Some(accounts),
-                    })
-            {
+            if let Some(accounts) = match tab_state.accounts.ready() {
+                None | Some(Err(_)) => None,
+                Some(Ok(accounts)) => Some(accounts),
+            } {
                 let trees = AccountTreeNode::new(
                     None,
                     accounts,
                     &tab_state.expanded_accounts,
                     &tab_state.unchecked_accounts,
                 );
-                tab_state.accounts_tree = Some(Promise::from_ready(Ok(trees)));
+                tab_state.accounts_tree = Promise::from_ready(Ok(trees));
             }
         }))
     }

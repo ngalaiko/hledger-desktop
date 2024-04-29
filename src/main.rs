@@ -2,6 +2,7 @@ mod app;
 mod converter;
 mod frame;
 mod hledger;
+mod promise;
 mod widgets;
 
 use std::{process::exit, sync::Arc};

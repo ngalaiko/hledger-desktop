@@ -1,11 +1,11 @@
 use std::{collections::HashSet, path};
 
 use chrono::NaiveDate;
-use poll_promise::Promise;
 
 use crate::{
     frame::state::new_transaction::{Error, PostingState, State},
-    hledger::{self, MixedAmount},
+    hledger,
+    promise::Promise,
 };
 
 use super::action::StateAction;
@@ -62,14 +62,14 @@ impl Update {
         let transaction = transaction.clone();
         Self::Ephemeral(Box::new(move |manager, state| {
             let manager = manager.clone();
-            state.creating = Some(Promise::spawn_async({
+            state.creating = Promise::spawn_async({
                 let transaction = transaction.clone();
                 let file_path = file_path.clone();
                 async move {
                     let client = manager.client(file_path).await?;
                     client.add(&transaction).await
                 }
-            }));
+            });
         }))
     }
 
@@ -107,7 +107,7 @@ impl Update {
                     .clone()
                     .filter_map(|posting| posting.parsed_amount.as_ref().ok())
                     .map(|amount| vec![amount.clone()].into())
-                    .sum::<MixedAmount>()
+                    .sum::<hledger::MixedAmount>()
                     .negate(),
             );
 

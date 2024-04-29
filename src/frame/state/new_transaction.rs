@@ -1,12 +1,12 @@
 use std::{collections::HashSet, path};
 
 use chrono::{Local, NaiveDate};
-use poll_promise::Promise;
 
-use crate::hledger::{self, MixedAmount};
+use crate::hledger;
+use crate::promise::Promise;
 
 pub struct State {
-    pub creating: Option<Promise<Result<(), hledger::Error>>>,
+    pub creating: Promise<Result<(), hledger::Error>>,
 
     pub date: NaiveDate,
     pub description: String,
@@ -19,9 +19,7 @@ pub struct State {
 
 impl State {
     pub fn is_loading(&self) -> bool {
-        self.creating
-            .as_ref()
-            .map_or(false, |p| p.ready().is_none())
+        self.creating.is_some() && self.creating.ready().is_none()
     }
 }
 
@@ -29,7 +27,7 @@ impl From<&Vec<hledger::Transaction>> for State {
     fn from(value: &Vec<hledger::Transaction>) -> Self {
         let suggestions = Suggestions::from(value);
         Self {
-            creating: None,
+            creating: Promise::default(),
 
             date: value
                 .last()
@@ -59,7 +57,7 @@ pub enum Error {
     #[error("only one empty amount is allowed")]
     TooManyEmptyAmounts,
     #[error("unbalanced posting")]
-    Unbalanced(MixedAmount),
+    Unbalanced(hledger::MixedAmount),
 }
 
 #[derive(Debug)]

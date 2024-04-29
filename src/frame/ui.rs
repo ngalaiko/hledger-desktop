@@ -152,11 +152,13 @@ fn account_tree_node_ui(ui: &mut Ui, node: &AccountTreeNode) -> Vec<TabStateUpda
 #[allow(clippy::too_many_lines)]
 fn tab_ui(ui: &mut Ui, tab_state: &TabState) -> Vec<TabStateUpdate> {
     match (
-        tab_state.accounts_tree.as_ref(),
-        tab_state.display_transactions.as_ref(),
-        tab_state.commodities.as_ref(),
+        &tab_state.accounts_tree,
+        &tab_state.display_transactions,
+        &tab_state.commodities,
     ) {
-        (Some(account_trees), Some(transactions), Some(commodities)) => {
+        (account_trees, transactions, commodities)
+            if account_trees.is_some() && transactions.is_some() && commodities.is_some() =>
+        {
             match (
                 account_trees.ready(),
                 transactions.ready(),
@@ -465,9 +467,7 @@ fn new_transaction_modal_ui(ui: &mut Ui, tab_state: &TabState) -> Vec<TabStateUp
                         ui.with_layout(Layout::right_to_left(Align::Min), |ui| {
                             if is_loading {
                                 ui.spinner();
-                            } else if let Some(Ok(())) =
-                                state.creating.as_ref().and_then(|p| p.ready())
-                            {
+                            } else if let Some(Ok(())) = state.creating.ready() {
                                 updates.extend(vec![
                                     TabStateUpdate::close_new_transaction_modal(),
                                     TabStateUpdate::reload_transactions(),
@@ -505,7 +505,7 @@ fn new_transaction_modal_ui(ui: &mut Ui, tab_state: &TabState) -> Vec<TabStateUp
                         });
                     });
 
-                    if let Some(Err(error)) = state.creating.as_ref().and_then(|p| p.ready()) {
+                    if let Some(Err(error)) = state.creating.ready() {
                         ui.label(error.to_string());
                     };
                 });

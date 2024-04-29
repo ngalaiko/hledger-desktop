@@ -1,11 +1,11 @@
 use std::{collections::HashSet, path};
 
-use poll_promise::Promise;
 use serde::{Deserialize, Serialize};
 
 use crate::{
     converter::Converter,
     hledger::{self, AccountName, Commodity, Transaction},
+    promise::Promise,
     widgets::CheckboxState,
 };
 
@@ -21,20 +21,20 @@ pub struct State {
     pub display_commodity: Option<hledger::Commodity>,
 
     #[serde(skip)]
-    pub accounts: Option<Promise<Result<Vec<hledger::Account>, hledger::Error>>>,
+    pub accounts: Promise<Result<Vec<hledger::Account>, hledger::Error>>,
     #[serde(skip)]
-    pub transactions: Option<Promise<Result<Vec<Transaction>, hledger::Error>>>,
+    pub transactions: Promise<Result<Vec<Transaction>, hledger::Error>>,
     #[serde(skip)]
-    pub commodities: Option<Promise<Result<Vec<Commodity>, hledger::Error>>>,
+    pub commodities: Promise<Result<Vec<Commodity>, hledger::Error>>,
     #[serde(skip)]
-    pub prices: Option<Promise<Result<Vec<hledger::Price>, hledger::Error>>>,
+    pub prices: Promise<Result<Vec<hledger::Price>, hledger::Error>>,
 
     #[serde(skip)]
-    pub display_transactions: Option<Promise<Result<Vec<Transaction>, hledger::Error>>>,
+    pub display_transactions: Promise<Result<Vec<Transaction>, hledger::Error>>,
     #[serde(skip)]
-    pub accounts_tree: Option<Promise<Result<AccountTreeNode, hledger::Error>>>,
+    pub accounts_tree: Promise<Result<AccountTreeNode, hledger::Error>>,
     #[serde(skip)]
-    pub converter: Option<Promise<Result<Converter, hledger::Error>>>,
+    pub converter: Promise<Result<Converter, hledger::Error>>,
     #[serde(skip)]
     pub new_transaction_modal: Option<new_transaction::State>,
 }

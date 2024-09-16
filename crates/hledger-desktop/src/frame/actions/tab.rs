@@ -1,3 +1,5 @@
+#![allow(clippy::assigning_clones)]
+
 use std::collections::HashSet;
 
 use futures::FutureExt;

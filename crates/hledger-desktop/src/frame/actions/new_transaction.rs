@@ -1,3 +1,5 @@
+#![allow(clippy::assigning_clones)]
+
 use std::{collections::HashSet, path};
 
 use chrono::NaiveDate;
@@ -158,6 +160,7 @@ impl Update {
     }
 }
 
+#[allow(dead_code)]
 pub struct Suggestions {
     pub descriptions: Vec<String>,
     pub account_names: Vec<String>,

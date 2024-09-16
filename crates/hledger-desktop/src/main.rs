@@ -61,7 +61,7 @@ fn init_logs() {
         .with_target(false)
         .compact();
 
-    let log_level = if cfg!(debug) {
+    let log_level = if cfg!(debug_assertions) {
         LevelFilter::DEBUG
     } else {
         LevelFilter::INFO

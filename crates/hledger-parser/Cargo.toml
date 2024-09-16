@@ -1,0 +1,33 @@
+[package]
+name = "hledger-parser"
+description = "Hledger jornal parser"
+repository = "https://github.com/ngalaiko/hledger-desktop"
+authors = [ "Nikita Galaiko <nikita@galaiko.rocks>" ]
+version = "1.0.0-beta.2"
+edition = "2021"
+license = "MIT"
+keywords = ["hledger", "parser"]
+
+[dependencies]
+chumsky = { version = "1.0.0-alpha.7" }
+chrono = { version = "0.4", default-features = false, features = [ "std", "clock", "now" ] }
+rust_decimal = { version = "1.36", default-features = false, features = [ "std" ] }
+
+ariadne = { version = "0.4.1", optional = true, default-features = false }
+clap = { version = "4.4", optional = true, default-features = false, features = [ "std", "help", "usage", "derive", "env" ] }
+
+[features]
+example-cheatsheet = [ "ariadne" ]
+cli = [ "clap", "ariadne" ]
+
+[[bin]]
+name = "hledger-parser"
+required-features = [ "cli" ]
+
+[[example]]
+name = "cheatsheet"
+path = "examples/cheatsheet.rs"
+required-features = [ "example-cheatsheet" ]
+
+[lints]
+workspace = true

@@ -1,0 +1,18 @@
+[package]
+name = "hledger-desktop"
+version = "1.0.0-beta.1"
+description = "Hledger desktop app"
+authors = [ "Nikita Galaiko <nikita@galaiko.rocks>" ]
+repository = "https://github.com/ngalaiko/hledger-desktop"
+edition = "2021"
+license = "MIT"
+keywords = ["hledger", "desktop"]
+
+[dependencies]
+async-std = "1.0"
+directories-next = "2.0"
+tracing-subscriber = "0.3"
+iced = { version = "0.13.1", features = [ "async-std", "debug" ] }
+serde = { version = "1.0", features = [ "derive" ] }
+serde_json = "1.0"
+uuid = { version = "1.0", features = [ "v4", "fast-rng", "serde" ] }

@@ -1,52 +1,6 @@
-[package]
-name = "hledger-desktop"
-description = "Desktop GUI for the hledger accounting tool"
-version = "0.0.1"
-authors = ["Nikita Galaiko <nikita@galaiko.rocks>"]
-edition = "2021"
-repository = "https://github.com/ngalaiko/hledger-desktop"
-license = "GPL-3.0-only"
-
-[dependencies]
-chrono = { version = "0.4", features = [ "serde" ] }
-directories-next = "2.0.0"
-eframe = "0.27"
-egui-modal = "0.3"
-egui-phosphor = "0.5"
-egui_autocomplete = "6.0"
-egui_extras = { version = "0.27", features = [ "chrono" ] }
-futures = "0.3"
-lazy_static = "1.4"
-poll-promise = { version = "0.3", features = [ "tokio" ] }
-rand = "0.8"
-regex = "1.9"
-reqwest = { version = "0.11", features = [ "json" ] }
-rfd = "0.11"
-rust_decimal = "1.32"
-serde = "1.0"
-serde_json = "1.0"
-thiserror = "1.0"
-tokio = { version = "1.33", features = [ "sync", "macros", "process", "io-util" ] }
-tracing = "0.1"
-tracing-appender = "0.2"
-tracing-subscriber = "0.3"
-url = "2.2"
-
-[profile.release]
-codegen-units = 1 # Compile crates one after another so the compiler can optimize better
-lto = true        # Enables link to optimizations
-opt-level = "s"   # Optimize for binary size
-strip = true      # Remove debug symbols
-
-[lints.rust]
-unsafe_code = "forbid"
-
-[lints.clippy]
-all = "deny"
-perf = "deny"
-correctness = "deny"
-complexity = "deny"
-style = "deny"
-pedantic = "deny"
-module_name_repetitions = "allow"
-too_many_lines = "allow"
+[workspace]
+members = [
+    "crates/hledger-desktop",
+    "crates/hledger-parser",
+]
+resolver = "2"

@@ -5,6 +5,9 @@ members = [
 ]
 resolver = "2"
 
+[workspace.dependencies]
+hledger-parser = { path = "crates/hledger-parser" }
+
 [workspace.lints.rust]
 unsafe_code = "forbid"
 

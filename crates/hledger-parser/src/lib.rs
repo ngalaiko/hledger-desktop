@@ -37,7 +37,7 @@ pub fn parse<I: AsRef<str>>(contents: I) -> Result<Vec<Directive>, Vec<ParseErro
 }
 
 /// Error type representing failures during parsing.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ParseError {
     /// The span of text where the error occurred.
     pub span: std::ops::Range<usize>,

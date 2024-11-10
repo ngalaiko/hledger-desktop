@@ -8,11 +8,15 @@ repository = "https://github.com/ngalaiko/hledger-desktop"
 license = "MIT"
 
 [dependencies]
-iced = { version = "0.13", features = [ "debug" ]  }
+hledger-parser.workspace = true
+
+iced = { version = "0.13", features = [ "debug", "smol" ] }
+tracing = "0.1"
 tracing-subscriber = "0.3"
 smol = "1.0"
-
-hledger-parser.workspace = true
+rfd = "0.15"
+glob = "0.3"
+thiserror = "2.0"
 
 [lints]
 workspace = true

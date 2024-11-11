@@ -1728,6 +1728,7 @@ dependencies = [
  "hledger-parser",
  "iced",
  "macro_rules_attribute",
+ "rayon",
  "rfd",
  "smol",
  "smol-macros",

@@ -1,7 +1,10 @@
 use std::sync::Arc;
 
 use hledger_parser::{Directive, Format, Include};
-use iced::futures::stream::{self, StreamExt};
+use iced::futures::{
+    channel::oneshot,
+    stream::{self, StreamExt},
+};
 
 use crate::glob::walk;
 
@@ -27,14 +30,19 @@ impl Journal {
     }
 }
 
-#[tracing::instrument(skip_all, fields(path = %path.as_ref().display()))]
 async fn parse<P: AsRef<std::path::Path>>(path: P) -> Result<Vec<Directive>, LoadError> {
     let contents = smol::fs::read_to_string(&path)
         .await
         .map_err(|error| LoadError::Io(error.kind()))?;
-    hledger_parser::parse(contents).map_err(LoadError::Parse)
+    let (send, recv) = oneshot::channel();
+    rayon::spawn(move || {
+        let result = hledger_parser::parse(contents).map_err(LoadError::Parse);
+        let _ = send.send(result);
+    });
+    recv.await.expect("panic in rayon::spawn")
 }
 
+#[tracing::instrument(skip_all, fields(path = %path.as_ref().display()))]
 async fn load<P: AsRef<std::path::Path>>(path: P) -> Result<Journal, LoadError> {
     let path = path.as_ref();
 

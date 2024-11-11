@@ -1,8 +1,9 @@
 use std::sync::Arc;
 
-use glob::glob;
 use hledger_parser::{Directive, Format, Include};
 use iced::futures::stream::{self, StreamExt};
+
+use crate::glob::walk;
 
 #[derive(Debug, Clone)]
 pub struct Journal {
@@ -15,7 +16,7 @@ pub enum LoadError {
     #[error("io: {0}")]
     Io(std::io::ErrorKind),
     #[error("failed to parse glob")]
-    Glob(Arc<glob::PatternError>),
+    Glob(Arc<wax::BuildError>),
     #[error("failed to parse file")]
     Parse(Vec<hledger_parser::ParseError>),
 }
@@ -45,10 +46,11 @@ async fn load<P: AsRef<std::path::Path>>(path: P) -> Result<Journal, LoadError> 
             Directive::Include(Include {
                 path: include_path,
                 format: None | Some(Format::Journal),
-            }) => path.parent().map(|parent| parent.join(include_path)),
+            }) => Some(wax::Glob::new(include_path.as_os_str().to_str().unwrap())),
             _ => None,
         })
-        .collect::<Vec<_>>();
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|error| LoadError::Glob(Arc::new(error)))?;
 
     if includes.is_empty() {
         Ok(Journal {
@@ -56,39 +58,34 @@ async fn load<P: AsRef<std::path::Path>>(path: P) -> Result<Journal, LoadError> 
             directives,
         })
     } else {
-        let subjournals = load_many_globs(includes).await;
-        let subjournals = subjournals.into_iter().collect::<Result<Vec<_>, _>>()?;
+        let subjournals = load_many_globs(path.parent().unwrap(), includes).await?;
         Ok(Journal {
             path: path.to_path_buf(),
             directives: directives
                 .into_iter()
-                .chain(subjournals.into_iter().flatten().flat_map(|j| j.directives))
+                .chain(subjournals.into_iter().flat_map(|j| j.directives))
                 .collect(),
         })
     }
 }
 
-async fn load_many_globs<P: AsRef<std::path::Path>>(
+async fn load_many_globs<'a, P: wax::Combine<'a>>(
+    path: &std::path::Path,
     patterns: Vec<P>,
-) -> Vec<Result<Vec<Journal>, LoadError>> {
-    stream::iter(patterns)
-        .map(|pattern| load_glob(pattern))
-        .buffer_unordered(1024)
-        .collect::<Vec<_>>()
-        .await
-}
-
-async fn load_glob<P: AsRef<std::path::Path>>(pattern: P) -> Result<Vec<Journal>, LoadError> {
-    let pattern = pattern.as_ref();
-
-    let files = glob(&pattern.display().to_string())
-        .map_err(|error| LoadError::Glob(Arc::new(error)))?
-        .map(|resolved_file| {
-            resolved_file.map_err(|glob_error| LoadError::Io(glob_error.error().kind()))
-        })
-        .collect::<Result<Vec<_>, _>>()?;
-
-    let journals = load_many(files).await;
+) -> Result<Vec<Journal>, LoadError> {
+    let patterns = wax::any(patterns).map_err(|error| LoadError::Glob(Arc::new(error)))?;
+    let paths = walk(path, &patterns).as_stream().collect::<Vec<_>>().await;
+    let paths = paths
+        .into_iter()
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|error| {
+            if let Some(io_error) = error.io() {
+                LoadError::Io(io_error.kind())
+            } else {
+                LoadError::Io(std::io::ErrorKind::Other)
+            }
+        })?;
+    let journals = load_many(paths).await;
     journals.into_iter().collect::<Result<Vec<_>, _>>()
 }
 

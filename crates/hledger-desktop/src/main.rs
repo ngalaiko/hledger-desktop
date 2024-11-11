@@ -1,4 +1,5 @@
 mod app;
+mod glob;
 mod journal;
 
 use app::HledgerDesktop;

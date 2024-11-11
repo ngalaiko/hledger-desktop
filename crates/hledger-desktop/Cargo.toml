@@ -10,13 +10,19 @@ license = "MIT"
 [dependencies]
 hledger-parser.workspace = true
 
-iced = { version = "0.13", features = [ "debug", "smol" ] }
+iced = { version = "0.13", features = ["debug", "smol"] }
 tracing = "0.1"
 tracing-subscriber = "0.3"
 smol = "1.0"
 rfd = "0.15"
-glob = "0.3"
 thiserror = "2.0"
+async-walkdir = "2.0"
+wax = "0.6"
+
+[dev-dependencies]
+macro_rules_attribute = "0.2"
+tempfile = "3.14"
+smol-macros = "0.1"
 
 [lints]
 workspace = true

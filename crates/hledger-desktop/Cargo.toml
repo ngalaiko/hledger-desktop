@@ -19,6 +19,8 @@ rfd = "0.15"
 thiserror = "2.0"
 async-walkdir = "2.0"
 wax = "0.6"
+notify = "7.0"
+notify-debouncer-mini = "0.5"
 
 [dev-dependencies]
 macro_rules_attribute = "0.2"

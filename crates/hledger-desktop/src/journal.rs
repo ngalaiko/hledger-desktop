@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{collections::HashSet, sync::Arc};
 
 use hledger_parser::{Directive, Format, Include};
 use iced::futures::{
@@ -12,6 +12,7 @@ use crate::glob::walk;
 pub struct Journal {
     pub path: std::path::PathBuf,
     pub directives: Vec<hledger_parser::Directive>,
+    includes: Vec<Journal>,
 }
 
 #[derive(Debug, Clone, thiserror::Error)]
@@ -27,6 +28,12 @@ pub enum LoadError {
 impl Journal {
     pub async fn load<P: AsRef<std::path::Path>>(path: P) -> Result<Self, LoadError> {
         load(path).await
+    }
+
+    pub fn includes(&self) -> HashSet<std::path::PathBuf> {
+        std::iter::once(self.path.clone())
+            .chain(self.includes.iter().map(|journal| journal.path.clone()))
+            .collect()
     }
 }
 
@@ -60,21 +67,12 @@ async fn load<P: AsRef<std::path::Path>>(path: P) -> Result<Journal, LoadError> 
         .collect::<Result<Vec<_>, _>>()
         .map_err(|error| LoadError::Glob(Arc::new(error)))?;
 
-    if includes.is_empty() {
-        Ok(Journal {
-            path: path.to_path_buf(),
-            directives,
-        })
-    } else {
-        let subjournals = load_many_globs(path.parent().unwrap(), includes).await?;
-        Ok(Journal {
-            path: path.to_path_buf(),
-            directives: directives
-                .into_iter()
-                .chain(subjournals.into_iter().flat_map(|j| j.directives))
-                .collect(),
-        })
-    }
+    let includes = load_many_globs(path.parent().unwrap(), includes).await?;
+    Ok(Journal {
+        path: path.to_path_buf(),
+        directives,
+        includes,
+    })
 }
 
 async fn load_many_globs<'a, P: wax::Combine<'a>>(

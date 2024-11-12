@@ -58,10 +58,10 @@ mod tests {
         let temp_dir = tempfile::tempdir().unwrap();
         for p in input {
             let path = temp_dir.path().join(p);
-            smol::fs::create_dir_all(path.parent().unwrap())
+            async_fs::create_dir_all(path.parent().unwrap())
                 .await
                 .unwrap();
-            smol::fs::write(path, b"").await.unwrap();
+            async_fs::write(path, b"").await.unwrap();
         }
 
         let glob = wax::any([glob]).unwrap();

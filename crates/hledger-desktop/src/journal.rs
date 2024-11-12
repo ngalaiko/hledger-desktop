@@ -31,7 +31,7 @@ impl Journal {
 }
 
 async fn parse<P: AsRef<std::path::Path>>(path: P) -> Result<Vec<Directive>, LoadError> {
-    let contents = smol::fs::read_to_string(&path)
+    let contents = async_fs::read_to_string(&path)
         .await
         .map_err(|error| LoadError::Io(error.kind()))?;
     let (send, recv) = oneshot::channel();

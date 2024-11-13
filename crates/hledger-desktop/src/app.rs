@@ -16,9 +16,10 @@ pub struct App {
 
 #[derive(Debug, Clone)]
 pub enum Message {
-    File(file::Message),
     OpenFileDialog,
     FileSelected(Option<std::path::PathBuf>),
+
+    File(file::Message),
     Watcher(watcher::Message),
 }
 
@@ -30,21 +31,8 @@ impl App {
 
     pub fn update(&mut self, message: Message) -> Task<Message> {
         match message {
-            Message::File(message) => match &mut self.file {
-                Some(file) => {
-                    assert!(
-                        self.watcher_input.is_some(),
-                        "watching files before watcher is running"
-                    );
-                    if let (file::Message::Loaded(Ok(journal)), Some(input)) =
-                        (&message, &mut self.watcher_input)
-                    {
-                        for file in journal.includes() {
-                            input.try_send(watcher::Input::Watch(file)).unwrap();
-                        }
-                    }
-                    file.update(message).map(Message::File)
-                }
+            Message::File(file_message) => match &mut self.file {
+                Some(file) => file.update(file_message).map(Message::File),
                 None => unreachable!(),
             },
             Message::OpenFileDialog => match self.file {
@@ -52,26 +40,31 @@ impl App {
                 None => Task::perform(select_file(), Message::FileSelected),
             },
             Message::FileSelected(selected_path) => {
+                let watcher_input = self
+                    .watcher_input
+                    .clone()
+                    .expect("watcher initialized before file is selected");
                 if let Some(path) = selected_path {
-                    let (file, task) = File::new(path);
+                    let (file, task) = File::new(path, watcher_input);
                     self.file = Some(file);
                     task.map(Message::File)
                 } else {
                     Task::none()
                 }
             }
-            Message::Watcher(event) => {
-                match event {
-                    watcher::Message::Started(watcher_input) => {
-                        assert!(self.watcher_input.is_none(), "watcher started twice");
-                        self.watcher_input.replace(watcher_input);
-                    }
-                    watcher::Message::FileChange(paths) => {
-                        dbg!(&paths);
-                    }
+            Message::Watcher(event) => match event {
+                watcher::Message::Started(watcher_input) => {
+                    assert!(self.watcher_input.is_none(), "watcher started twice");
+                    self.watcher_input.replace(watcher_input);
+                    Task::none()
                 }
-                Task::none()
-            }
+                watcher::Message::FileChange(paths) => match &mut self.file {
+                    None => unreachable!(),
+                    Some(file) => file
+                        .update(file::Message::FilesChanged(paths))
+                        .map(Message::File),
+                },
+            },
         }
     }
 

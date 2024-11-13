@@ -1,4 +1,4 @@
-use std::{collections::HashSet, sync::Arc};
+use std::sync::Arc;
 
 use hledger_parser::{Directive, Format, Include};
 use iced::futures::{
@@ -30,7 +30,7 @@ impl Journal {
         load(path).await
     }
 
-    pub fn includes(&self) -> HashSet<std::path::PathBuf> {
+    pub fn includes(&self) -> Vec<std::path::PathBuf> {
         std::iter::once(self.path.clone())
             .chain(self.includes.iter().map(|journal| journal.path.clone()))
             .collect()

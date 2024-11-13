@@ -8,7 +8,7 @@ use notify_debouncer_mini::{new_debouncer, Debouncer};
 
 #[derive(Debug)]
 pub enum Input {
-    Watch(std::path::PathBuf),
+    Watch(Vec<std::path::PathBuf>),
 }
 
 #[derive(Debug, Clone)]
@@ -61,11 +61,14 @@ pub fn run() -> impl Stream<Item = Message> {
                         }
                         input_event = fused_input_rx.select_next_some() => {
                             match input_event {
-                                Input::Watch(path) => {
-                                    let _ = debouncer.watcher()
+                                Input::Watch(paths) => {
+                                    let watcher = debouncer.watcher();
+                                    for path in &paths {
+                                    let _ = watcher
                                         .watch(&path, notify::RecursiveMode::NonRecursive)
                                         .map(|()| tracing::info!(path = %path.display(), "started watching"))
                                         .map_err(|error| tracing::error!(?error, "failed to watch"));
+                                    }
                                 }
                             };
                         }

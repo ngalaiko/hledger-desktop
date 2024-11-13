@@ -2,6 +2,7 @@ mod app;
 mod glob;
 mod journal;
 mod watcher;
+mod promise;
 
 use app::App;
 use tracing_subscriber::util::SubscriberInitExt;

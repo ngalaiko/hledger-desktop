@@ -19,7 +19,7 @@ pub enum Message {
     File(file::Message),
     OpenFileDialog,
     FileSelected(Option<std::path::PathBuf>),
-    Watcher(watcher::Event),
+    Watcher(watcher::Message),
 }
 
 impl App {
@@ -62,11 +62,11 @@ impl App {
             }
             Message::Watcher(event) => {
                 match event {
-                    watcher::Event::Started(watcher_input) => {
+                    watcher::Message::Started(watcher_input) => {
                         assert!(self.watcher_input.is_none(), "watcher started twice");
                         self.watcher_input.replace(watcher_input);
                     }
-                    watcher::Event::ChangeEvent(paths) => {
+                    watcher::Message::FileChange(paths) => {
                         dbg!(&paths);
                     }
                 }

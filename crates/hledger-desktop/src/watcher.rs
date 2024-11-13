@@ -6,17 +6,18 @@ use iced::{
 };
 use notify_debouncer_mini::{new_debouncer, Debouncer};
 
+#[derive(Debug)]
 pub enum Input {
     Watch(std::path::PathBuf),
 }
 
 #[derive(Debug, Clone)]
-pub enum Event {
+pub enum Message {
     Started(mpsc::Sender<Input>),
-    ChangeEvent(Vec<std::path::PathBuf>),
+    FileChange(Vec<std::path::PathBuf>),
 }
 
-pub enum State<W: notify::Watcher> {
+enum State<W: notify::Watcher> {
     NotRunning,
     Running(
         Debouncer<W>,
@@ -25,7 +26,7 @@ pub enum State<W: notify::Watcher> {
     ),
 }
 
-pub fn run() -> impl Stream<Item = Event> {
+pub fn run() -> impl Stream<Item = Message> {
     stream::channel(100, |mut output| async move {
         let mut state = State::NotRunning;
 
@@ -41,7 +42,7 @@ pub fn run() -> impl Stream<Item = Event> {
                     .unwrap();
                     let (input_tx, input_rx) = mpsc::channel(100);
                     state = State::Running(debouncer, rx, input_rx);
-                    let _ = output.send(Event::Started(input_tx)).await;
+                    let _ = output.send(Message::Started(input_tx)).await;
                 }
                 State::Running(debouncer, rx, input_rx) => {
                     let mut fused_rx = rx.by_ref().fuse();
@@ -51,7 +52,7 @@ pub fn run() -> impl Stream<Item = Event> {
                             match event {
                                 Ok(events) => {
                                     let paths = events.into_iter().map(|e| e.path).collect();
-                                    let _ = output.send(Event::ChangeEvent(paths)).await;
+                                    let _ = output.send(Message::FileChange(paths)).await;
                                 },
                                 Err(error) => {
                                     tracing::error!(?error, "watcher error");

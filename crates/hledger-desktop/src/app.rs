@@ -1,9 +1,10 @@
 mod file;
-mod watcher;
 
 use iced::futures::channel::mpsc;
 use iced::widget::{button, column, row, text};
 use iced::{Element, Subscription, Task};
+
+use crate::watcher;
 
 use self::file::File;
 

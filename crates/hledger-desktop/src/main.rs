@@ -1,6 +1,7 @@
 mod app;
 mod glob;
 mod journal;
+mod watcher;
 
 use app::App;
 use tracing_subscriber::util::SubscriberInitExt;

@@ -1,8 +1,11 @@
+use std::collections::HashSet;
+
 use iced::futures::channel::mpsc;
 use iced::futures::SinkExt;
 use iced::widget::text;
 use iced::{Element, Task};
 
+use crate::journal::Journal;
 use crate::promise::Promise;
 use crate::{journal, watcher};
 
@@ -16,6 +19,7 @@ pub struct File {
 #[derive(Debug, Clone)]
 pub enum Message {
     Loaded(Result<journal::Journal, journal::LoadError>),
+    Updated(Result<journal::Journal, journal::LoadError>),
     FilesChanged(Vec<std::path::PathBuf>),
 }
 
@@ -37,6 +41,13 @@ impl File {
     #[allow(clippy::unused_self)]
     pub fn update(&mut self, message: Message) -> Task<Message> {
         match message {
+            Message::Updated(result) => {
+                if let Ok(journal) = result {
+                    // TODO: handle journal update
+                    dbg!(journal.path);
+                }
+                Task::none()
+            }
             Message::Loaded(result) => {
                 let task = if let Ok(journal) = &result {
                     let journal_includes = journal.includes();
@@ -55,14 +66,15 @@ impl File {
             }
             Message::FilesChanged(paths) => match &self.journal {
                 Promise::Loaded(Ok(journal)) => {
-                    let journal_includes = journal.includes();
-                    for path in &paths {
+                    let journal_includes = journal.includes().into_iter().collect::<HashSet<_>>();
+                    let tasks = paths.into_iter().map(|path| {
                         assert!(
-                            journal_includes.contains(path),
-                            "got file change for a path that this journal does not include"
+                            journal_includes.contains(&path),
+                            "detected file change for a file that is not included"
                         );
-                    }
-                    Task::none()
+                        Task::perform(Journal::load(path), Message::Updated)
+                    });
+                    Task::batch(tasks)
                 }
                 _ => unreachable!(),
             },

@@ -65,7 +65,7 @@ pub fn run() -> impl Stream<Item = Message> {
                                     let watcher = debouncer.watcher();
                                     for path in &paths {
                                     let _ = watcher
-                                        .watch(&path, notify::RecursiveMode::NonRecursive)
+                                        .watch(path, notify::RecursiveMode::NonRecursive)
                                         .map(|()| tracing::info!(path = %path.display(), "started watching"))
                                         .map_err(|error| tracing::error!(?error, "failed to watch"));
                                     }

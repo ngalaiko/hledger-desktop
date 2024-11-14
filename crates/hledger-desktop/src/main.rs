@@ -19,6 +19,6 @@ pub fn main() -> iced::Result {
         .init();
 
     iced::application(App::title, App::update, App::view)
-        .subscription(App::file_watcher)
+        .subscription(App::subscription)
         .run()
 }

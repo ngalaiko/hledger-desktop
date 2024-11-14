@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use iced::futures::channel::mpsc;
 use iced::futures::SinkExt;
 use iced::widget::text;
-use iced::{Element, Task};
+use iced::{Element, Subscription, Task};
 
 use crate::journal::Journal;
 use crate::promise::Promise;
@@ -11,27 +11,24 @@ use crate::{journal, watcher};
 
 #[derive(Debug)]
 pub struct File {
-    path: std::path::PathBuf,
-    watcher_input: mpsc::Sender<watcher::Input>,
+    pub path: std::path::PathBuf,
+    watcher_input: Option<mpsc::Sender<watcher::Input>>,
     journal: Promise<Result<journal::Journal, journal::LoadError>>,
 }
 
 #[derive(Debug, Clone)]
 pub enum Message {
+    Watcher(watcher::Message),
     Loaded(Result<journal::Journal, journal::LoadError>),
     Updated(Result<journal::Journal, journal::LoadError>),
-    FilesChanged(Vec<std::path::PathBuf>),
 }
 
 impl File {
-    pub fn new(
-        path: std::path::PathBuf,
-        watcher_input: mpsc::Sender<watcher::Input>,
-    ) -> (Self, Task<Message>) {
+    pub fn new(path: std::path::PathBuf) -> (Self, Task<Message>) {
         (
             Self {
                 path: path.clone(),
-                watcher_input,
+                watcher_input: None,
                 journal: Promise::Loading,
             },
             Task::perform(journal::Journal::load(path), Message::Loaded),
@@ -51,7 +48,10 @@ impl File {
             Message::Loaded(result) => {
                 let task = if let Ok(journal) = &result {
                     let journal_includes = journal.includes();
-                    let mut watcher_input = self.watcher_input.clone();
+                    let mut watcher_input = self
+                        .watcher_input
+                        .clone()
+                        .expect("watcher initialized before file is selected");
                     Task::future(async move {
                         watcher_input
                             .send(watcher::Input::Watch(journal_includes))
@@ -64,7 +64,12 @@ impl File {
                 self.journal = Promise::Loaded(result);
                 task
             }
-            Message::FilesChanged(paths) => match &self.journal {
+            Message::Watcher(watcher::Message::Started(watcher_input)) => {
+                assert!(self.watcher_input.is_none(), "watcher started twice");
+                self.watcher_input.replace(watcher_input);
+                Task::none()
+            }
+            Message::Watcher(watcher::Message::FileChange(paths)) => match &self.journal {
                 Promise::Loaded(Ok(journal)) => {
                     let journal_includes = journal.includes().into_iter().collect::<HashSet<_>>();
                     let tasks = paths.into_iter().map(|path| {
@@ -96,5 +101,10 @@ impl File {
             )),
         }
         .into()
+    }
+
+    #[allow(clippy::unused_self)]
+    pub fn subscription(&self) -> Subscription<Message> {
+        Subscription::run(watcher::run).map(Message::Watcher)
     }
 }

@@ -1,17 +1,13 @@
 mod file;
 
-use iced::futures::channel::mpsc;
 use iced::widget::{button, column, row, text};
 use iced::{Element, Subscription, Task};
-
-use crate::watcher;
 
 use self::file::File;
 
 #[derive(Debug, Default)]
 pub struct App {
     file: Option<File>,
-    watcher_input: Option<mpsc::Sender<watcher::Input>>,
 }
 
 #[derive(Debug, Clone)]
@@ -20,13 +16,20 @@ pub enum Message {
     FileSelected(Option<std::path::PathBuf>),
 
     File(file::Message),
-    Watcher(watcher::Message),
 }
 
 impl App {
-    #[allow(clippy::unused_self)]
     pub fn title(&self) -> String {
-        String::from("hledger-deskop")
+        if let Some(file_name) = self
+            .file
+            .as_ref()
+            .and_then(|file| file.path.file_name())
+            .and_then(|file_name| file_name.to_str())
+        {
+            file_name.to_string()
+        } else {
+            String::from("hledger-deskop")
+        }
     }
 
     pub fn update(&mut self, message: Message) -> Task<Message> {
@@ -40,31 +43,14 @@ impl App {
                 None => Task::perform(select_file(), Message::FileSelected),
             },
             Message::FileSelected(selected_path) => {
-                let watcher_input = self
-                    .watcher_input
-                    .clone()
-                    .expect("watcher initialized before file is selected");
                 if let Some(path) = selected_path {
-                    let (file, task) = File::new(path, watcher_input);
+                    let (file, task) = File::new(path);
                     self.file = Some(file);
                     task.map(Message::File)
                 } else {
                     Task::none()
                 }
             }
-            Message::Watcher(event) => match event {
-                watcher::Message::Started(watcher_input) => {
-                    assert!(self.watcher_input.is_none(), "watcher started twice");
-                    self.watcher_input.replace(watcher_input);
-                    Task::none()
-                }
-                watcher::Message::FileChange(paths) => match &mut self.file {
-                    None => unreachable!(),
-                    Some(file) => file
-                        .update(file::Message::FilesChanged(paths))
-                        .map(Message::File),
-                },
-            },
         }
     }
 
@@ -80,8 +66,12 @@ impl App {
     }
 
     #[allow(clippy::unused_self)]
-    pub fn file_watcher(&self) -> Subscription<Message> {
-        Subscription::run(watcher::run).map(Message::Watcher)
+    pub fn subscription(&self) -> Subscription<Message> {
+        if let Some(file) = &self.file {
+            file.subscription().map(Message::File)
+        } else {
+            Subscription::none()
+        }
     }
 }
 

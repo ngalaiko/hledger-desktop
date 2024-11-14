@@ -38,28 +38,36 @@ impl File {
     #[allow(clippy::unused_self)]
     pub fn update(&mut self, message: Message) -> Task<Message> {
         match message {
-            Message::Updated(result) => {
-                if let Ok(journal) = result {
-                    // TODO: handle journal update
-                    dbg!(journal.path);
-                }
-                Task::none()
-            }
-            Message::Loaded(result) => {
-                let task = if let Ok(journal) = &result {
-                    let journal_includes = journal.includes();
-                    let mut watcher_input = self
-                        .watcher_input
-                        .clone()
-                        .expect("watcher initialized before file is selected");
-                    Task::future(async move {
-                        watcher_input
-                            .send(watcher::Input::Watch(journal_includes))
-                            .await
-                    })
-                    .then(|_| Task::none())
-                } else {
+            Message::Updated(result) => match (&mut self.journal, &result) {
+                (Promise::Loaded(Ok(journal)), Ok(updated)) => {
+                    journal.merge(updated);
                     Task::none()
+                }
+                (_, Err(error)) => {
+                    tracing::error!(?error, "failed to update journal");
+                    Task::none()
+                }
+                _ => Task::none(),
+            },
+            Message::Loaded(result) => {
+                let task = match &result {
+                    Ok(journal) => {
+                        let mut watcher_input = self
+                            .watcher_input
+                            .clone()
+                            .expect("watcher initialized before file is selected");
+                        let journal_includes = journal.includes();
+                        Task::future(async move {
+                            watcher_input
+                                .send(watcher::Input::Watch(journal_includes))
+                                .await
+                        })
+                        .then(|_| Task::none())
+                    }
+                    Err(error) => {
+                        tracing::error!(?error, "failed to load journal");
+                        Task::none()
+                    }
                 };
                 self.journal = Promise::Loaded(result);
                 task

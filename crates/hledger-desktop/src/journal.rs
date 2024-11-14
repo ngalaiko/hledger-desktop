@@ -35,6 +35,21 @@ impl Journal {
             .chain(self.includes.iter().map(|journal| journal.path.clone()))
             .collect()
     }
+
+    pub fn merge(&mut self, other: &Journal) -> bool {
+        if self.path == other.path {
+            self.directives.clone_from(&other.directives);
+            self.includes.clone_from(&other.includes);
+            true
+        } else {
+            for included in &mut self.includes {
+                if included.merge(other) {
+                    return true;
+                }
+            }
+            false
+        }
+    }
 }
 
 async fn parse<P: AsRef<std::path::Path>>(path: P) -> Result<Vec<Directive>, LoadError> {

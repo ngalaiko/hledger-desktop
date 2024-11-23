@@ -7,7 +7,7 @@ use crate::directive::transaction::posting::{posting, Posting};
 use crate::directive::transaction::status::Status;
 use crate::state::State;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Debug, Clone, Hash, PartialEq)]
 pub struct Transaction {
     pub date: chrono::NaiveDate,
     pub status: Option<Status>,

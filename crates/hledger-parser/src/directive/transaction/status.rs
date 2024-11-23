@@ -2,7 +2,7 @@ use chumsky::prelude::*;
 
 use crate::state::State;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Hash, Clone, PartialEq)]
 pub enum Status {
     // !
     Pending,

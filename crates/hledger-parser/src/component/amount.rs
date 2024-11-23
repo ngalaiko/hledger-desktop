@@ -6,7 +6,7 @@ use crate::component::quantity::quantity;
 use crate::component::whitespace::whitespace;
 use crate::state::State;
 
-#[derive(Debug, Default, Clone, PartialEq)]
+#[derive(Debug, Default, Clone, Hash, PartialEq)]
 pub struct Amount {
     pub quantity: Decimal,
     pub commodity: String,

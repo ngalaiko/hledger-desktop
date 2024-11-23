@@ -5,7 +5,7 @@ use crate::component::whitespace::whitespace;
 use crate::state::State;
 
 #[allow(clippy::module_name_repetitions)]
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Debug, Clone, Hash, PartialEq)]
 pub enum AmountPrice {
     Unit(Amount),
     Total(Amount),

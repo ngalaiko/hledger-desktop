@@ -13,7 +13,7 @@ use crate::utils::end_of_line;
 
 pub use crate::directive::transaction::posting::assertion::Assertion;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Debug, Clone, Hash, PartialEq)]
 pub struct Posting {
     pub status: Option<Status>,
     pub account_name: Vec<String>,

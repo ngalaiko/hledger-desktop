@@ -5,7 +5,7 @@ use crate::component::price::{amount_price, AmountPrice};
 use crate::component::whitespace::whitespace;
 use crate::state::State;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Debug, Clone, Hash, PartialEq)]
 pub struct Assertion {
     pub is_strict: bool,
     pub is_subaccount_inclusive: bool,

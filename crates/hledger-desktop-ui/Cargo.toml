@@ -1,0 +1,31 @@
+[package]
+name = "hledger-desktop-ui"
+description = "UI for the hledger accounting tool"
+version = "0.0.1"
+authors = ["Nikita Galaiko <nikita@galaiko.rocks>"]
+edition = "2021"
+repository = "https://github.com/ngalaiko/hledger-desktop"
+license = "GPL-3.0-only"
+
+[dependencies]
+hledger-journal.workspace = true
+
+eframe = "0.29"
+egui-phosphor = "0.7"
+rfd = "0.11"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+thiserror = "1.0"
+tracing = "0.1"
+tracing-appender = "0.2"
+tracing-subscriber = "0.3"
+directories-next = "2.0"
+poll-promise = { version = "0.3", features = ["smol", "smol_tick_poll"] }
+smol-macros = "0.1"
+macro_rules_attribute = "0.2"
+
+[dev-dependencies]
+tempfile = "3.14"
+
+[lints]
+workspace = true

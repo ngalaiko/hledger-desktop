@@ -11,7 +11,7 @@ use crate::glob::walk;
 #[derive(Debug, Clone)]
 pub struct Journal {
     pub path: std::path::PathBuf,
-    pub directives: Vec<hledger_parser::Directive>,
+    directives: Vec<hledger_parser::Directive>,
     includes: Vec<Journal>,
 }
 
@@ -34,6 +34,21 @@ impl Journal {
         std::iter::once(self.path.clone())
             .chain(self.includes.iter().map(|journal| journal.path.clone()))
             .collect()
+    }
+
+    pub fn transactions(&self) -> impl Iterator<Item = &hledger_parser::Transaction> {
+        self.directives().filter_map(|directive| match directive {
+            Directive::Transaction(tx) => Some(tx),
+            _ => None,
+        })
+    }
+
+    fn directives(&self) -> impl Iterator<Item = &hledger_parser::Directive> {
+        self.directives.iter().chain(
+            self.includes
+                .iter()
+                .flat_map(|included| included.directives.iter()),
+        )
     }
 
     pub fn merge(&mut self, other: &Journal) -> bool {

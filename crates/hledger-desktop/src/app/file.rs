@@ -2,18 +2,21 @@ use std::collections::HashSet;
 
 use iced::futures::channel::mpsc;
 use iced::futures::SinkExt;
-use iced::widget::text;
-use iced::{Element, Subscription, Task};
+use iced::widget::{scrollable, text, Row};
+use iced::{Element, Length, Subscription, Task};
 
 use crate::journal::Journal;
 use crate::promise::Promise;
 use crate::{journal, watcher};
+
+use iced_virtual_list::{Content, List};
 
 #[derive(Debug)]
 pub struct File {
     pub path: std::path::PathBuf,
     watcher_input: Option<mpsc::Sender<watcher::Input>>,
     journal: Promise<Result<journal::Journal, journal::LoadError>>,
+    content: Content<hledger_parser::Transaction>,
 }
 
 #[derive(Debug, Clone)]
@@ -30,6 +33,7 @@ impl File {
                 path: path.clone(),
                 watcher_input: None,
                 journal: Promise::Loading,
+                content: Content::new(),
             },
             Task::perform(journal::Journal::load(path), Message::Loaded),
         )
@@ -57,6 +61,8 @@ impl File {
                             .clone()
                             .expect("watcher initialized before file is selected");
                         let journal_includes = journal.includes();
+                        self.content =
+                            Content::with_items(journal.transactions().cloned().collect());
                         Task::future(async move {
                             watcher_input
                                 .send(watcher::Input::Watch(journal_includes))
@@ -96,23 +102,36 @@ impl File {
 
     pub fn view(&self) -> Element<Message> {
         match &self.journal {
-            Promise::Loading => text(format!("loading {}", self.path.display())),
-            Promise::Loaded(Err(journal::LoadError::Io(kind))) => text(kind.to_string()),
-            Promise::Loaded(Err(journal::LoadError::Glob(error))) => text(error.to_string()),
-            Promise::Loaded(Err(journal::LoadError::Parse(_))) => text("parse error"),
-            Promise::Loaded(Ok(journal::Journal {
-                path, directives, ..
-            })) => text(format!(
-                "loaded {}, {} directives",
-                path.display(),
-                directives.len()
-            )),
+            Promise::Loading => text(format!("loading {}", self.path.display())).into(),
+            Promise::Loaded(Err(journal::LoadError::Io(kind))) => text(kind.to_string()).into(),
+            Promise::Loaded(Err(journal::LoadError::Glob(error))) => text(error.to_string()).into(),
+            Promise::Loaded(Err(journal::LoadError::Parse(_))) => text("parse error").into(),
+            Promise::Loaded(Ok(_)) => {
+                scrollable(List::new(&self.content, |_, tx| view_transaction(tx)))
+                    .width(Length::Fill)
+                    .into()
+            }
         }
-        .into()
     }
 
     #[allow(clippy::unused_self)]
     pub fn subscription(&self) -> Subscription<Message> {
         Subscription::run(watcher::run).map(Message::Watcher)
     }
+}
+
+fn view_transaction(tx: &hledger_parser::Transaction) -> Element<Message> {
+    let date = text!("{}", tx.date.format("%Y-%m-%d"));
+    let payee = text!("{}", tx.payee.clone());
+    let description = text!(
+        "{}",
+        tx.description
+            .clone()
+            .map(|d| format!("| {d}"))
+            .unwrap_or_default()
+    );
+    Row::with_children([date.into(), payee.into(), description.into()])
+        .spacing(10)
+        .width(Length::Fill)
+        .into()
 }

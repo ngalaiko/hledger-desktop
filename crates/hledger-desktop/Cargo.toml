@@ -9,6 +9,7 @@ license = "MIT"
 
 [dependencies]
 hledger-parser.workspace = true
+iced-virtual-list.workspace = true
 
 iced = { version = "0.13", features = ["debug", "smol"] }
 tracing = "0.1"

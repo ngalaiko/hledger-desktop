@@ -2,11 +2,13 @@
 members = [
     "crates/hledger-desktop",
     "crates/hledger-parser",
+    "crates/iced-virtual-list",
 ]
 resolver = "2"
 
 [workspace.dependencies]
 hledger-parser = { path = "crates/hledger-parser" }
+iced-virtual-list = { path = "crates/iced-virtual-list" }
 
 [workspace.lints.rust]
 unsafe_code = "forbid"

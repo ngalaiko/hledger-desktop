@@ -1810,6 +1810,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "iced-virtual-list"
+version = "1.0.0"
+dependencies = [
+ "iced",
+]
+
+[[package]]
 name = "iced_core"
 version = "0.13.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"

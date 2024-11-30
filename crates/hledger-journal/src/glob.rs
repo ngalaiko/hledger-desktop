@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 
-use iced::futures::StreamExt;
+use futures::StreamExt;
 
 pub fn walk<'glob, P: wax::Pattern<'glob>>(path: &Path, glob: &'glob P) -> Walker<'glob, P> {
     Walker::new(path, glob)
@@ -39,11 +39,11 @@ impl<'glob, P: wax::Pattern<'glob>> Walker<'glob, P> {
 
     pub fn as_stream<'a>(
         &'a mut self,
-    ) -> impl iced::futures::Stream<Item = Result<PathBuf, async_walkdir::Error>> + 'a
+    ) -> impl futures::Stream<Item = Result<PathBuf, async_walkdir::Error>> + 'a
     where
         'a: 'glob,
     {
-        iced::futures::stream::unfold(self, |self_| async {
+        futures::stream::unfold(self, |self_| async {
             self_.next().await.transpose().map(|v| (v, self_))
         })
     }

@@ -1,0 +1,24 @@
+[package]
+name = "hledger-journal"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+hledger-parser.workspace = true
+
+tracing = "0.1"
+futures = "0.3"
+async-walkdir = "2.0"
+thiserror = "2.0"
+async-fs = "2.1"
+rayon = "1.10"
+wax = "0.6"
+
+[dev-dependencies]
+macro_rules_attribute = "0.2"
+tempfile = "3.14"
+smol-macros = "0.1"
+
+[lints]
+workspace = true

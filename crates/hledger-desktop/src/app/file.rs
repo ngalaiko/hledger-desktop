@@ -1,13 +1,13 @@
 use std::collections::HashSet;
 
+use hledger_journal::Journal;
 use iced::futures::channel::mpsc;
 use iced::futures::SinkExt;
 use iced::widget::{scrollable, text, Row};
 use iced::{Element, Length, Subscription, Task};
 
-use crate::journal::Journal;
 use crate::promise::Promise;
-use crate::{journal, watcher};
+use crate::watcher;
 
 use iced_virtual_list::{Content, List};
 
@@ -15,15 +15,15 @@ use iced_virtual_list::{Content, List};
 pub struct File {
     pub path: std::path::PathBuf,
     watcher_input: Option<mpsc::Sender<watcher::Input>>,
-    journal: Promise<Result<journal::Journal, journal::LoadError>>,
+    journal: Promise<Result<hledger_journal::Journal, hledger_journal::Error>>,
     content: Content<hledger_parser::Transaction>,
 }
 
 #[derive(Debug, Clone)]
 pub enum Message {
     Watcher(watcher::Message),
-    Loaded(Result<journal::Journal, journal::LoadError>),
-    Updated(Result<journal::Journal, journal::LoadError>),
+    Loaded(Result<hledger_journal::Journal, hledger_journal::Error>),
+    Updated(Result<hledger_journal::Journal, hledger_journal::Error>),
 }
 
 impl File {
@@ -35,7 +35,7 @@ impl File {
                 journal: Promise::Loading,
                 content: Content::new(),
             },
-            Task::perform(journal::Journal::load(path), Message::Loaded),
+            Task::perform(hledger_journal::Journal::load(path), Message::Loaded),
         )
     }
 
@@ -103,9 +103,11 @@ impl File {
     pub fn view(&self) -> Element<Message> {
         match &self.journal {
             Promise::Loading => text(format!("loading {}", self.path.display())).into(),
-            Promise::Loaded(Err(journal::LoadError::Io(kind))) => text(kind.to_string()).into(),
-            Promise::Loaded(Err(journal::LoadError::Glob(error))) => text(error.to_string()).into(),
-            Promise::Loaded(Err(journal::LoadError::Parse(_))) => text("parse error").into(),
+            Promise::Loaded(Err(hledger_journal::Error::Io(kind))) => text(kind.to_string()).into(),
+            Promise::Loaded(Err(hledger_journal::Error::Glob(error))) => {
+                text(error.to_string()).into()
+            }
+            Promise::Loaded(Err(hledger_journal::Error::Parse(_))) => text("parse error").into(),
             Promise::Loaded(Ok(_)) => {
                 scrollable(List::new(&self.content, |_, tx| view_transaction(tx)))
                     .width(Length::Fill)

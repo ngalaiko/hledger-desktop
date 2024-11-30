@@ -1,6 +1,4 @@
 mod app;
-mod glob;
-mod journal;
 mod promise;
 mod watcher;
 

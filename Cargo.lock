@@ -897,7 +897,9 @@ checksum = "a21f936df1771bf62b77f047b726c4625ff2e8aa607c01ec06e5a05bd8463401"
 dependencies = [
  "android-tzdata",
  "iana-time-zone",
+ "js-sys",
  "num-traits",
+ "wasm-bindgen",
  "windows-targets 0.52.6",
 ]
 
@@ -2366,6 +2368,7 @@ checksum = "dfa686283ad6dd069f105e5ab091b04c62850d3e4cf5d67debad1933f55023df"
 name = "hledger-desktop"
 version = "1.0.0-beta.1"
 dependencies = [
+ "chrono",
  "hledger-journal",
  "iced",
  "iced-virtual-list",

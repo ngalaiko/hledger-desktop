@@ -1,5 +1,4 @@
 mod app;
-mod promise;
 mod watcher;
 
 use app::App;

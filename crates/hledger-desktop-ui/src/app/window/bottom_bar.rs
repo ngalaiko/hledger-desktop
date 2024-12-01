@@ -1,7 +1,6 @@
 use eframe::egui::{Align, Button, Layout, Ui};
 
 use crate::action::Action;
-
 use crate::app::State;
 use crate::render_mode::RenderMode;
 

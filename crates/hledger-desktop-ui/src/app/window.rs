@@ -37,8 +37,21 @@ pub fn render(ctx: &Context, state: &State) -> Action<State> {
         .and_then(central_panel_action)
 }
 
-fn central_pane_ui(ui: &mut Ui, _state: &State) -> Action<State> {
-    welcome_screen_ui(ui)
+fn central_pane_ui(ui: &mut Ui, state: &State) -> Action<State> {
+    if let Some(active_tab_index) = state.active_tab_index {
+        let active_tab = state
+            .tabs
+            .get(active_tab_index)
+            .expect("active tab index is valid");
+        tab::ui(ui, active_tab).map(move |update_tab| {
+            Box::new(move |window_state: &mut State| {
+                let active_tab = window_state.tabs.get_mut(active_tab_index).unwrap();
+                update_tab(active_tab);
+            })
+        })
+    } else {
+        welcome_screen_ui(ui)
+    }
 }
 
 fn welcome_screen_ui(ui: &mut Ui) -> Action<State> {

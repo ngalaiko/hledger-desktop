@@ -1,4 +1,4 @@
-type UpdateFn<T> = Box<dyn Fn(&mut T)>;
+type UpdateFn<T> = Box<dyn FnOnce(&mut T)>;
 
 pub enum Action<T> {
     Persistent(UpdateFn<T>),
@@ -15,6 +15,20 @@ impl<T: 'static> Action<T> {
     #[must_use]
     pub fn noop() -> Self {
         Self::default()
+    }
+
+    pub fn map<O: 'static>(
+        self,
+        update: impl FnOnce(UpdateFn<T>) -> UpdateFn<O> + 'static,
+    ) -> Action<O> {
+        match self {
+            Self::Ephemeral(t) => Action::<O>::Ephemeral(Box::new(|o: &mut O| {
+                update(t)(o);
+            })),
+            Self::Persistent(t) => Action::<O>::Persistent(Box::new(|o: &mut O| {
+                update(t)(o);
+            })),
+        }
     }
 
     #[must_use]

@@ -1,3 +1,7 @@
+use eframe::egui::Ui;
+
+use crate::action::Action;
+
 pub struct State {
     pub file_path: std::path::PathBuf,
 }
@@ -16,4 +20,9 @@ impl State {
             file_path: path.as_ref().to_path_buf(),
         }
     }
+}
+
+pub fn ui(ui: &mut Ui, state: &State) -> Action<State> {
+    ui.label(format!("i am {}", state.name()));
+    Action::noop()
 }

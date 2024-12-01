@@ -28,9 +28,7 @@ struct PersistentState {
 
 impl From<TabState> for crate::app::window::tab::State {
     fn from(value: TabState) -> Self {
-        Self {
-            file_path: value.file_path.clone(),
-        }
+        Self::new(value.file_path)
     }
 }
 

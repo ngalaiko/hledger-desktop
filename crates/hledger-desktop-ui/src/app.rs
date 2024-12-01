@@ -3,9 +3,9 @@ pub mod window;
 use eframe::egui::{Context, FontDefinitions};
 use eframe::{self, CreationContext};
 
-use crate::action::Action;
 use crate::persistance::save_state;
 use crate::window_info::WindowInfo;
+use crate::Command;
 
 pub use self::window::State;
 
@@ -30,7 +30,7 @@ impl eframe::App for App {
         let record_frame_history = {
             let now = ctx.input(|i| i.time);
             let previous_time_frame = frame.info().cpu_usage;
-            Action::<State>::Ephemeral(Box::new(move |state| {
+            Command::<State>::Ephemeral(Box::new(move |state| {
                 state.frames.on_new_frame(now, previous_time_frame);
             }))
         };
@@ -51,11 +51,11 @@ impl eframe::App for App {
             window_info
         });
         let remember_window_size = if window_info == self.state.window {
-            Action::noop()
+            Command::none()
         } else {
-            Action::<State>::Persistent(Box::new(move |state| {
+            Command::<State>::persistent(move |state| {
                 state.window = window_info;
-            }))
+            })
         };
 
         let render_action = window::render(ctx, &self.state);
@@ -65,13 +65,13 @@ impl eframe::App for App {
             .and_then(render_action);
 
         match action {
-            Action::Persistent(update) => {
+            Command::Persistent(update) => {
                 update(&mut self.state);
                 if let Err(error) = save_state(&self.state) {
                     tracing::error!("failed to save state: {}", error);
                 }
             }
-            Action::Ephemeral(update) => {
+            Command::Ephemeral(update) => {
                 update(&mut self.state);
             }
         }

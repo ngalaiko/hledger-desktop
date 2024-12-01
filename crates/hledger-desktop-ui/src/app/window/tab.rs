@@ -1,6 +1,6 @@
 use eframe::egui::Ui;
 
-use crate::action::Action;
+use crate::Command;
 
 pub struct State {
     pub file_path: std::path::PathBuf,
@@ -22,7 +22,7 @@ impl State {
     }
 }
 
-pub fn ui(ui: &mut Ui, state: &State) -> Action<State> {
+pub fn ui(ui: &mut Ui, state: &State) -> Command<State> {
     ui.label(format!("i am {}", state.name()));
-    Action::noop()
+    Command::none()
 }

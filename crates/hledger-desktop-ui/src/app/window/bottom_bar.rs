@@ -1,10 +1,10 @@
 use eframe::egui::{Align, Button, Layout, Ui};
 
-use crate::action::Action;
 use crate::app::State;
 use crate::render_mode::RenderMode;
+use crate::Command;
 
-pub fn ui(ui: &mut Ui, state: &State) -> Action<State> {
+pub fn ui(ui: &mut Ui, state: &State) -> Command<State> {
     ui.horizontal(|ui| {
         if cfg!(debug_assertions) {
             ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
@@ -17,7 +17,7 @@ pub fn ui(ui: &mut Ui, state: &State) -> Action<State> {
             })
             .inner
         } else {
-            Action::noop()
+            Command::none()
         }
     })
     .inner
@@ -35,7 +35,7 @@ fn frames_per_second_ui(ui: &mut Ui, state: &State) {
     );
 }
 
-fn render_mode_ui(ui: &mut Ui, state: &State) -> Action<State> {
+fn render_mode_ui(ui: &mut Ui, state: &State) -> Command<State> {
     match state.render_mode {
         RenderMode::Continious => {
             ui.ctx().request_repaint();
@@ -44,11 +44,11 @@ fn render_mode_ui(ui: &mut Ui, state: &State) -> Action<State> {
                 .on_hover_text("Switch to reactive rendering")
                 .clicked()
             {
-                Action::Ephemeral(Box::new(move |state| {
+                Command::Ephemeral(Box::new(move |state| {
                     state.render_mode = RenderMode::Reactive;
                 }))
             } else {
-                Action::noop()
+                Command::none()
             }
         }
         RenderMode::Reactive => {
@@ -57,11 +57,11 @@ fn render_mode_ui(ui: &mut Ui, state: &State) -> Action<State> {
                 .on_hover_text("Switch to continious rendering")
                 .clicked()
             {
-                Action::Ephemeral(Box::new(move |state| {
+                Command::Ephemeral(Box::new(move |state| {
                     state.render_mode = RenderMode::Continious;
                 }))
             } else {
-                Action::noop()
+                Command::none()
             }
         }
     }

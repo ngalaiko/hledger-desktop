@@ -2367,7 +2367,6 @@ name = "hledger-desktop"
 version = "1.0.0-beta.1"
 dependencies = [
  "hledger-journal",
- "hledger-parser",
  "iced",
  "iced-virtual-list",
  "notify",

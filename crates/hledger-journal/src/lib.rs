@@ -17,6 +17,9 @@ pub struct Journal {
     includes: Vec<Journal>,
 }
 
+pub use hledger_parser::ParseError;
+pub use hledger_parser::Transaction;
+
 #[derive(Debug, Clone, thiserror::Error)]
 pub enum Error {
     #[error("io: {0}")]
@@ -24,7 +27,7 @@ pub enum Error {
     #[error("failed to parse glob")]
     Glob(Arc<wax::BuildError>),
     #[error("failed to parse file")]
-    Parse(Vec<hledger_parser::ParseError>),
+    Parse(Vec<ParseError>),
 }
 
 impl Journal {
@@ -40,7 +43,7 @@ impl Journal {
             .collect()
     }
 
-    pub fn transactions(&self) -> impl Iterator<Item = &hledger_parser::Transaction> {
+    pub fn transactions(&self) -> impl Iterator<Item = &Transaction> {
         self.directives().filter_map(|directive| match directive {
             Directive::Transaction(tx) => Some(tx),
             _ => None,

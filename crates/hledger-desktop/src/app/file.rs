@@ -16,7 +16,7 @@ pub struct File {
     pub path: std::path::PathBuf,
     watcher_input: Option<mpsc::Sender<watcher::Input>>,
     journal: Promise<Result<hledger_journal::Journal, hledger_journal::Error>>,
-    content: Content<hledger_parser::Transaction>,
+    content: Content<hledger_journal::Transaction>,
 }
 
 #[derive(Debug, Clone)]
@@ -122,7 +122,7 @@ impl File {
     }
 }
 
-fn view_transaction(tx: &hledger_parser::Transaction) -> Element<Message> {
+fn view_transaction(tx: &hledger_journal::Transaction) -> Element<Message> {
     let date = text!("{}", tx.date.format("%Y-%m-%d"));
     let payee = text!("{}", tx.payee.clone());
     let description = text!(

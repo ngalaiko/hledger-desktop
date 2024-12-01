@@ -8,7 +8,6 @@ repository = "https://github.com/ngalaiko/hledger-desktop"
 license = "MIT"
 
 [dependencies]
-hledger-parser.workspace = true
 hledger-journal.workspace = true
 iced-virtual-list.workspace = true
 

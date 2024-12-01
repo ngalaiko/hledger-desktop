@@ -13,7 +13,7 @@ use crate::glob::walk;
 #[derive(Debug, Clone)]
 pub struct Journal {
     pub path: std::path::PathBuf,
-    directives: Vec<hledger_parser::Directive>,
+    transactions: Vec<hledger_parser::Transaction>,
     includes: Vec<Journal>,
 }
 
@@ -44,23 +44,16 @@ impl Journal {
     }
 
     pub fn transactions(&self) -> impl Iterator<Item = &Transaction> {
-        self.directives().filter_map(|directive| match directive {
-            Directive::Transaction(tx) => Some(tx),
-            _ => None,
-        })
-    }
-
-    fn directives(&self) -> impl Iterator<Item = &hledger_parser::Directive> {
-        self.directives.iter().chain(
+        self.transactions.iter().chain(
             self.includes
                 .iter()
-                .flat_map(|included| included.directives.iter()),
+                .flat_map(|included| included.transactions.iter()),
         )
     }
 
     pub fn merge(&mut self, other: &Journal) -> bool {
         if self.path == other.path {
-            self.directives.clone_from(&other.directives);
+            self.transactions.clone_from(&other.transactions);
             self.includes.clone_from(&other.includes);
             true
         } else {
@@ -105,9 +98,17 @@ async fn load<P: AsRef<std::path::Path>>(path: P) -> Result<Journal, Error> {
         .map_err(|error| Error::Glob(Arc::new(error)))?;
 
     let includes = load_many_globs(path.parent().unwrap(), includes).await?;
+    let transactions = directives
+        .into_iter()
+        .filter_map(|directive| match directive {
+            Directive::Transaction(tx) => Some(tx),
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+
     Ok(Journal {
         path: path.to_path_buf(),
-        directives,
+        transactions,
         includes,
     })
 }

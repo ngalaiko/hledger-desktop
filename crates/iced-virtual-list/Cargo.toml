@@ -1,8 +1,0 @@
-[package]
-name = "iced-virtual-list"
-version = "1.0.0"
-edition = "2021"
-publish = false
-
-[dependencies]
-iced = { version = "0.13", features = ["advanced"] }

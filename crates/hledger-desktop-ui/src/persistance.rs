@@ -1,15 +1,29 @@
+use std::sync::Arc;
+
 use serde::{Deserialize, Serialize};
+use smol_macros::Executor;
 use tracing::instrument;
 
-use crate::{app::State, theme::Theme, window_info::WindowInfo};
+use crate::app::window::tab;
+use crate::{app, theme::Theme, window_info::WindowInfo};
 
 #[instrument(skip_all)]
-pub fn load_state() -> Result<State, Error> {
-    PersistentState::load().map(State::from)
+pub fn load_state(executor: Arc<Executor<'static>>) -> Result<app::State, Error> {
+    PersistentState::load().map(|value| app::State {
+        theme: value.theme,
+        window: value.window,
+        tabs: value
+            .tabs
+            .into_iter()
+            .map(|persistent| tab::State::new(&executor, persistent.file_path))
+            .collect(),
+        active_tab_index: value.active_tab_index,
+        ..app::State::default()
+    })
 }
 
 #[instrument(skip_all)]
-pub fn save_state(state: &State) -> Result<(), Error> {
+pub fn save_state(state: &app::State) -> Result<(), Error> {
     PersistentState::from(state).save()
 }
 
@@ -26,13 +40,7 @@ struct PersistentState {
     active_tab_index: Option<usize>,
 }
 
-impl From<TabState> for crate::app::window::tab::State {
-    fn from(value: TabState) -> Self {
-        Self::new(value.file_path)
-    }
-}
-
-impl From<&crate::app::window::tab::State> for TabState {
+impl From<&tab::State> for TabState {
     fn from(value: &crate::app::window::tab::State) -> Self {
         Self {
             file_path: value.file_path.clone(),
@@ -40,24 +48,8 @@ impl From<&crate::app::window::tab::State> for TabState {
     }
 }
 
-impl From<PersistentState> for State {
-    fn from(value: PersistentState) -> Self {
-        Self {
-            theme: value.theme,
-            window: value.window,
-            tabs: value
-                .tabs
-                .into_iter()
-                .map(crate::app::window::tab::State::from)
-                .collect(),
-            active_tab_index: value.active_tab_index,
-            ..State::default()
-        }
-    }
-}
-
-impl From<&State> for PersistentState {
-    fn from(value: &State) -> Self {
+impl From<&app::State> for PersistentState {
+    fn from(value: &app::State) -> Self {
         Self {
             theme: value.theme,
             window: value.window,

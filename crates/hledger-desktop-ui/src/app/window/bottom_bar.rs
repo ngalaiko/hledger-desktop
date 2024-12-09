@@ -4,7 +4,7 @@ use crate::app::State;
 use crate::render_mode::RenderMode;
 use crate::Command;
 
-pub fn ui(ui: &mut Ui, state: &State) -> Command<State> {
+pub fn ui<'frame>(ui: &mut Ui, state: &State) -> Command<'frame, State> {
     ui.horizontal(|ui| {
         if cfg!(debug_assertions) {
             ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
@@ -35,7 +35,7 @@ fn frames_per_second_ui(ui: &mut Ui, state: &State) {
     );
 }
 
-fn render_mode_ui(ui: &mut Ui, state: &State) -> Command<State> {
+fn render_mode_ui<'frame>(ui: &mut Ui, state: &State) -> Command<'frame, State> {
     match state.render_mode {
         RenderMode::Continious => {
             ui.ctx().request_repaint();

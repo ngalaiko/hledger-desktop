@@ -1,36 +1,36 @@
-type UpdateFn<T> = Box<dyn FnOnce(&mut T)>;
+type UpdateFn<'cmd, T> = Box<dyn FnOnce(&mut T) + 'cmd>;
 
-pub enum Command<T> {
-    Persistent(UpdateFn<T>),
-    Ephemeral(UpdateFn<T>),
+pub enum Command<'cmd, T: 'cmd> {
+    Persistent(UpdateFn<'cmd, T>),
+    Ephemeral(UpdateFn<'cmd, T>),
 }
 
-impl<T> Command<T> {
-    pub fn persistent(update: impl FnOnce(&mut T) + 'static) -> Self {
+impl<'cmd, T> Command<'cmd, T> {
+    pub fn persistent(update: impl FnOnce(&mut T) + 'cmd) -> Self {
         Self::Persistent(Box::new(update))
     }
 
-    pub fn ephemeral(update: impl FnOnce(&mut T) + 'static) -> Self {
+    pub fn ephemeral(update: impl FnOnce(&mut T) + 'cmd) -> Self {
         Self::Ephemeral(Box::new(update))
     }
 }
 
-impl<T> Default for Command<T> {
+impl<T> Default for Command<'_, T> {
     fn default() -> Self {
         Self::Ephemeral(Box::new(|_| {}))
     }
 }
 
-impl<T: 'static> Command<T> {
+impl<'cmd, T> Command<'cmd, T> {
     #[must_use]
     pub fn none() -> Self {
         Self::default()
     }
 
-    pub fn map<O: 'static>(
+    pub fn map<O>(
         self,
-        update: impl FnOnce(UpdateFn<T>) -> UpdateFn<O> + 'static,
-    ) -> Command<O> {
+        update: impl FnOnce(UpdateFn<T>) -> UpdateFn<O> + 'cmd,
+    ) -> Command<'cmd, O> {
         match self {
             Self::Ephemeral(t) => Command::<O>::Ephemeral(Box::new(|o: &mut O| {
                 update(t)(o);
@@ -42,7 +42,7 @@ impl<T: 'static> Command<T> {
     }
 
     #[must_use]
-    pub fn and_then(self, other: Command<T>) -> Command<T> {
+    pub fn and_then(self, other: Command<'cmd, T>) -> Command<'cmd, T> {
         match (self, other) {
             (Command::Persistent(f1), Command::Persistent(f2)) => {
                 Command::Persistent(Box::new(move |state| {

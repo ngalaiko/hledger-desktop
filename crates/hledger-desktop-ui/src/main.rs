@@ -2,20 +2,22 @@ use std::{process::exit, sync::Arc};
 
 use eframe::icon_data::from_png_bytes;
 use macro_rules_attribute::apply;
-use smol_macros::main;
+use smol_macros::{main, Executor};
+use tracing::Level;
 use tracing::{metadata::LevelFilter, subscriber::set_global_default};
+use tracing_subscriber::filter::Targets;
 use tracing_subscriber::{fmt::format::FmtSpan, layer::SubscriberExt, Layer};
 
 use hledger_desktop_ui::app::App;
 use hledger_desktop_ui::persistance;
 
 #[apply(main!)]
-async fn main() {
+async fn main(executor: Arc<Executor<'static>>) {
     init_logs();
 
     tracing::info!("starting app");
 
-    let state = persistance::load_state()
+    let state = persistance::load_state(executor.clone())
         .map_err(|error| tracing::error!(%error, "failed to load state"))
         .unwrap_or_default();
 
@@ -39,7 +41,7 @@ async fn main() {
     if let Err(error) = eframe::run_native(
         "hledger",
         native_options,
-        Box::new(|cc| Ok(Box::new(App::new(cc, state)))),
+        Box::new(|cc| Ok(Box::new(App::new(cc, executor, state)))),
     ) {
         tracing::error!(%error, "failed to run the app");
         exit(2)
@@ -59,20 +61,24 @@ fn init_logs() {
         LevelFilter::INFO
     };
 
+    let filter = Targets::new()
+        .with_default(log_level)
+        .with_target("winit", Level::INFO);
+
     set_global_default(
         tracing_subscriber::registry()
             .with(
                 tracing_subscriber::fmt::layer()
                     .event_format(log_format.clone())
                     .with_span_events(FmtSpan::CLOSE)
-                    .with_filter(log_level),
+                    .with_filter(filter.clone()),
             )
             .with(
                 // subscriber that writes spans to a file
                 tracing_subscriber::fmt::layer()
                     .event_format(log_format)
                     .with_span_events(FmtSpan::NEW | FmtSpan::CLOSE)
-                    .with_filter(log_level),
+                    .with_filter(filter),
             ),
     )
     .expect("failed to set global logs subscriber");

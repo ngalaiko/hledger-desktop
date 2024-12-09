@@ -1,7 +1,10 @@
 pub mod window;
 
+use std::sync::Arc;
+
 use eframe::egui::{Context, FontDefinitions};
 use eframe::{self, CreationContext};
+use smol_macros::Executor;
 
 use crate::persistance::save_state;
 use crate::window_info::WindowInfo;
@@ -11,17 +14,18 @@ pub use self::window::State;
 
 pub struct App {
     state: State,
+    executor: Arc<Executor<'static>>,
 }
 
 impl App {
     #[must_use]
-    pub fn new(cc: &CreationContext<'_>, state: State) -> Self {
+    pub fn new(cc: &CreationContext<'_>, executor: Arc<Executor<'static>>, state: State) -> Self {
         let mut fonts = FontDefinitions::default();
         egui_phosphor::add_to_fonts(&mut fonts, egui_phosphor::Variant::Regular);
 
         cc.egui_ctx.set_fonts(fonts);
 
-        Self { state }
+        Self { state, executor }
     }
 }
 
@@ -58,7 +62,7 @@ impl eframe::App for App {
             })
         };
 
-        let render_action = window::render(ctx, &self.state);
+        let render_action = window::render(ctx, self.executor.clone(), &self.state);
 
         let action = record_frame_history
             .and_then(remember_window_size)

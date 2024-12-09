@@ -36,11 +36,9 @@ impl Journal {
         load(path).await
     }
 
-    #[must_use]
-    pub fn includes(&self) -> Vec<std::path::PathBuf> {
+    pub fn includes(&self) -> impl Iterator<Item = std::path::PathBuf> + '_ {
         std::iter::once(self.path.clone())
             .chain(self.includes.iter().map(|journal| journal.path.clone()))
-            .collect()
     }
 
     pub fn transactions(&self) -> impl Iterator<Item = &Transaction> {

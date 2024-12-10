@@ -2,7 +2,7 @@ use eframe::egui::{ScrollArea, Ui};
 use egui_virtual_list::VirtualList;
 use smol_macros::Executor;
 
-use crate::{journal, widgets, Command};
+use crate::{journal, widgets};
 
 pub struct State {
     pub file_path: std::path::PathBuf,
@@ -30,29 +30,27 @@ impl State {
     }
 }
 
-pub fn ui<'frame>(ui: &mut Ui, state: &mut State) -> Command<'frame, State> {
+pub fn ui(ui: &mut Ui, state: &mut State) {
     let journal_guard = state.watcher.journal();
     let error_guard = state.watcher.error();
     if !error_guard.is_empty() {
         ui.label("error");
-        Command::none()
     } else if let Some(journal) = journal_guard.as_ref() {
         transactions_list_ui(
             ui,
             journal.transactions().collect::<Vec<_>>().as_slice(),
             state,
-        )
+        );
     } else {
         widgets::spinner_ui(ui);
-        Command::none()
     }
 }
 
-fn transactions_list_ui<'frame>(
+fn transactions_list_ui(
     ui: &mut Ui,
     transactions: &[&hledger_journal::Transaction],
     state: &mut State,
-) -> Command<'frame, State> {
+) {
     ScrollArea::vertical().show(ui, |ui| {
         ui.set_width(ui.available_width());
         state
@@ -63,5 +61,4 @@ fn transactions_list_ui<'frame>(
                 1
             })
     });
-    Command::none()
 }

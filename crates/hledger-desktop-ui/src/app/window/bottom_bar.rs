@@ -2,25 +2,19 @@ use eframe::egui::{Align, Button, Layout, Ui};
 
 use crate::app::State;
 use crate::render_mode::RenderMode;
-use crate::Command;
 
-pub fn ui<'frame>(ui: &mut Ui, state: &State) -> Command<'frame, State> {
+pub fn ui(ui: &mut Ui, state: &mut State) {
     ui.horizontal(|ui| {
         if cfg!(debug_assertions) {
             ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                let action = render_mode_ui(ui, state);
+                render_mode_ui(ui, state);
 
                 frames_per_second_ui(ui, state);
 
                 ui.separator();
-                action
-            })
-            .inner
-        } else {
-            Command::none()
+            });
         }
-    })
-    .inner
+    });
 }
 
 fn frames_per_second_ui(ui: &mut Ui, state: &State) {
@@ -35,7 +29,7 @@ fn frames_per_second_ui(ui: &mut Ui, state: &State) {
     );
 }
 
-fn render_mode_ui<'frame>(ui: &mut Ui, state: &State) -> Command<'frame, State> {
+fn render_mode_ui(ui: &mut Ui, state: &mut State) {
     match state.render_mode {
         RenderMode::Continious => {
             ui.ctx().request_repaint();
@@ -44,11 +38,7 @@ fn render_mode_ui<'frame>(ui: &mut Ui, state: &State) -> Command<'frame, State> 
                 .on_hover_text("Switch to reactive rendering")
                 .clicked()
             {
-                Command::Ephemeral(Box::new(move |state| {
-                    state.render_mode = RenderMode::Reactive;
-                }))
-            } else {
-                Command::none()
+                state.set_render_mode(RenderMode::Reactive);
             }
         }
         RenderMode::Reactive => {
@@ -57,11 +47,7 @@ fn render_mode_ui<'frame>(ui: &mut Ui, state: &State) -> Command<'frame, State> 
                 .on_hover_text("Switch to continious rendering")
                 .clicked()
             {
-                Command::Ephemeral(Box::new(move |state| {
-                    state.render_mode = RenderMode::Continious;
-                }))
-            } else {
-                Command::none()
+                state.set_render_mode(RenderMode::Continious);
             }
         }
     }

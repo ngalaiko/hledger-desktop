@@ -1,47 +1,27 @@
-use std::sync::Arc;
-
 use eframe::egui::{vec2, Align, Button, Layout, Sense, Ui};
 use smol_macros::Executor;
 
 use crate::app::State;
 use crate::theme::Theme;
-use crate::Command;
 
-use super::tab;
-
-pub fn ui<'frame>(
-    ui: &mut Ui,
-    executor: Arc<Executor<'static>>,
-    state: &State,
-) -> Command<'frame, State> {
+pub fn ui(ui: &mut Ui, executor: &Executor<'static>, state: &mut State) {
     ui.horizontal(|ui| {
         if cfg!(target_os = "macos") {
             macos_traffic_lights_box_ui(ui);
             ui.separator();
         }
 
-        let tab_action = tabs_list(ui, executor, state);
+        tabs_list(ui, executor, state);
 
-        let theme_switch_action = ui
-            .with_layout(Layout::right_to_left(Align::Center), |ui| {
-                let action = dark_light_mode_switch_ui(ui, state);
-                ui.separator();
-                action
-            })
-            .inner;
-
-        tab_action.and_then(theme_switch_action)
-    })
-    .inner
+        ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+            dark_light_mode_switch_ui(ui, state);
+            ui.separator();
+        });
+    });
 }
 
-fn tabs_list<'frame>(
-    ui: &mut Ui,
-    executor: Arc<Executor<'static>>,
-    state: &State,
-) -> Command<'frame, State> {
+fn tabs_list(ui: &mut Ui, executor: &Executor<'static>, state: &mut State) {
     ui.horizontal(|ui| {
-        let mut action = Command::none();
         let mut new_selected = None;
         let mut deleted = vec![];
 
@@ -68,41 +48,25 @@ fn tabs_list<'frame>(
                 .clicked()
         {
             if let Some(file_path) = rfd::FileDialog::new().pick_file() {
-                action = action.and_then(Command::<State>::persistent(move |state| {
-                    let tab = tab::State::new(&executor, file_path.clone());
-                    state.tabs.push(tab);
-                    state.active_tab_index.replace(state.tabs.len() - 1);
-                }));
+                state.open_tab(executor, file_path);
             }
         }
 
         if let Some(index) = new_selected {
-            action = action.and_then(Command::<State>::persistent(move |state| {
-                state.active_tab_index.replace(index);
-            }));
+            state.set_active_tab(index);
         }
 
         for index in deleted.drain(..) {
-            action = action.and_then(Command::<State>::persistent(move |state| {
-                state.tabs.remove(index);
-                if state.tabs.is_empty() {
-                    state.active_tab_index.take();
-                } else {
-                    state.active_tab_index = state.active_tab_index.map(|i| i.saturating_sub(1));
-                }
-            }));
+            state.close_tab(index);
         }
-
-        action
-    })
-    .inner
+    });
 }
 
 fn macos_traffic_lights_box_ui(ui: &mut Ui) {
     ui.allocate_exact_size(vec2(50.0, 25.0), Sense::click());
 }
 
-fn dark_light_mode_switch_ui<'frame>(ui: &mut Ui, state: &State) -> Command<'frame, State> {
+fn dark_light_mode_switch_ui(ui: &mut Ui, state: &mut State) {
     let new_theme = match state.theme {
         Theme::Light => {
             if ui
@@ -130,8 +94,6 @@ fn dark_light_mode_switch_ui<'frame>(ui: &mut Ui, state: &State) -> Command<'fra
 
     if let Some(theme) = new_theme {
         ui.ctx().set_visuals(theme.into());
-        Command::<State>::persistent(move |state| state.theme = theme)
-    } else {
-        Command::none()
+        state.set_theme(theme);
     }
 }

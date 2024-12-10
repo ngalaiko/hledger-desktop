@@ -99,9 +99,6 @@ impl Watcher {
                         match parsed_journal {
                             Ok(parsed_journal) => {
                                 let mut journal_guard = journal_clone.lock_arc().await;
-                                if let Some(journal) = journal_guard.as_mut() {
-                                    journal.merge(&parsed_journal);
-                                }
                                 if path == path_clone {
                                     let old_paths = journal_guard.as_ref().map(|j| j.includes().collect::<HashSet<_>>()).unwrap_or_default();
                                     let new_paths = parsed_journal.includes().collect::<HashSet<_>>();
@@ -113,7 +110,11 @@ impl Watcher {
                                     if !to_unwatch.is_empty() {
                                         watch_sender.send(WatcherTask::Unwatch(to_unwatch)).await.unwrap();
                                     }
+                                }
+                                if path == path_clone {
                                     *journal_guard = Some(parsed_journal);
+                                } else if let Some(journal) = journal_guard.as_mut() {
+                                    journal.merge(&parsed_journal);
                                 }
                                 let mut error_guard = error_clone.lock_arc().await;
                                 error_guard.remove(&path_clone);

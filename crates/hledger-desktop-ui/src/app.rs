@@ -62,7 +62,7 @@ impl eframe::App for App {
             })
         };
 
-        let render_action = window::render(ctx, self.executor.clone(), &self.state);
+        let render_action = window::render(ctx, self.executor.clone(), &mut self.state);
 
         let action = record_frame_history
             .and_then(remember_window_size)

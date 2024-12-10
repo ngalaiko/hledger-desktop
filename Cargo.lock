@@ -1246,6 +1246,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "egui_virtual_list"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8191e9cbf6cc7b111655fc115725505fc09d7698c04c36897950c46d6e69521b"
+dependencies = [
+ "egui",
+ "web-time",
+]
+
+[[package]]
 name = "either"
 version = "1.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1919,6 +1929,7 @@ dependencies = [
  "directories-next",
  "eframe",
  "egui-phosphor",
+ "egui_virtual_list",
  "futures",
  "hledger-journal",
  "macro_rules_attribute",

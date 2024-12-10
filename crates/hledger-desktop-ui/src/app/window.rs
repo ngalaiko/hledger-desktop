@@ -25,7 +25,7 @@ pub struct State {
 pub fn render<'frame>(
     ctx: &Context,
     executor: Arc<Executor<'static>>,
-    state: &State,
+    state: &mut State,
 ) -> Command<'frame, State> {
     let top_bar_action = TopBottomPanel::top("top_bar")
         .show(ctx, |ui| top_bar::ui(ui, executor.clone(), state))
@@ -47,12 +47,12 @@ pub fn render<'frame>(
 fn central_pane_ui<'frame>(
     ui: &mut Ui,
     executor: Arc<Executor<'static>>,
-    state: &State,
+    state: &mut State,
 ) -> Command<'frame, State> {
     if let Some(active_tab_index) = state.active_tab_index {
         let active_tab = state
             .tabs
-            .get(active_tab_index)
+            .get_mut(active_tab_index)
             .expect("active tab index is valid");
         tab::ui(ui, active_tab).map(move |update_tab| {
             Box::new(move |window_state: &mut State| {

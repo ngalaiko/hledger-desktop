@@ -9,7 +9,6 @@ resolver = "2"
 [workspace.dependencies]
 hledger-journal = { path = "crates/hledger-journal" }
 hledger-parser = { path = "crates/hledger-parser" }
-iced-virtual-list = { path = "crates/iced-virtual-list" }
 
 [workspace.lints.rust]
 unsafe_code = "forbid"

@@ -28,7 +28,7 @@ async-channel = "2.3"
 async-lock = "3.4"
 futures = "0.3"
 async-task = "4.7"
-egui_virtual_list = "0.5"
+egui_extras = "0.29"
 
 [dev-dependencies]
 tempfile = "3.14"

@@ -1,5 +1,4 @@
-use eframe::egui::{ScrollArea, Ui};
-use egui_virtual_list::VirtualList;
+use eframe::egui::{Align, Layout, RichText, TextStyle, Ui};
 use smol_macros::Executor;
 
 use crate::{journal, widgets};
@@ -7,7 +6,6 @@ use crate::{journal, widgets};
 pub struct State {
     pub file_path: std::path::PathBuf,
     watcher: journal::Watcher,
-    list: VirtualList,
 }
 
 impl State {
@@ -25,7 +23,6 @@ impl State {
         Self {
             file_path: path.to_path_buf(),
             watcher: journal::Watcher::watch(executor, path_clone),
-            list: VirtualList::new(),
         }
     }
 }
@@ -36,29 +33,88 @@ pub fn ui(ui: &mut Ui, state: &mut State) {
     if !error_guard.is_empty() {
         ui.label("error");
     } else if let Some(journal) = journal_guard.as_ref() {
-        transactions_list_ui(
-            ui,
-            journal.transactions().collect::<Vec<_>>().as_slice(),
-            state,
-        );
+        transactions_list_ui(ui, journal.transactions().collect::<Vec<_>>().as_slice());
     } else {
         widgets::spinner_ui(ui);
     }
 }
 
-fn transactions_list_ui(
-    ui: &mut Ui,
-    transactions: &[&hledger_journal::Transaction],
-    state: &mut State,
-) {
-    ScrollArea::vertical().show(ui, |ui| {
-        ui.set_width(ui.available_width());
-        state
-            .list
-            .ui_custom_layout(ui, transactions.len(), |ui, index| {
-                let transaction = &transactions[index];
-                ui.label(transaction.payee.clone());
-                1
-            })
+fn transactions_list_ui(ui: &mut Ui, transactions: &[&hledger_journal::Transaction]) {
+    use egui_extras::{Column, TableBuilder};
+
+    let heights = transactions
+        .iter()
+        .map(|transaction| transaction_height(ui, transaction) + ui.spacing().item_spacing.x)
+        .collect::<Vec<_>>();
+
+    let available_width = ui.available_width();
+    TableBuilder::new(ui)
+        .striped(false)
+        .stick_to_bottom(true)
+        .column(Column::exact(available_width))
+        .body(|body| {
+            body.heterogeneous_rows(heights.into_iter(), |mut row| {
+                let transaction = &transactions[row.index()];
+                row.col(|ui| transaction_ui(ui, transaction));
+            });
+        });
+}
+
+#[allow(clippy::cast_precision_loss)]
+fn transaction_height(ui: &Ui, transaction: &hledger_journal::Transaction) -> f32 {
+    let line_height = ui.text_style_height(&TextStyle::Monospace);
+    let header = line_height;
+    let postings = transaction.postings.len() as f32 * line_height;
+    let gaps = if transaction.postings.len() > 1 {
+        (transaction.postings.len() - 1) as f32 * ui.spacing().item_spacing.y
+    } else {
+        0.0
+    };
+    header + postings + gaps
+}
+
+fn transaction_ui(ui: &mut Ui, transaction: &hledger_journal::Transaction) {
+    ui.with_layout(Layout::right_to_left(Align::Min), |ui| {
+        ui.horizontal(|ui| {
+            ui.add_space(ui.spacing().item_spacing.x * 2.0); // this is space for the scroller
+            ui.vertical(|ui| {
+                let date_widget = ui
+                    .horizontal(|ui| {
+                        let date_widget = ui.label(
+                            RichText::new(transaction.date.format("%Y-%m-%d").to_string())
+                                .monospace(),
+                        );
+                        if let Some(description) = &transaction.description {
+                            ui.label(
+                                RichText::new(format!("{} | {description}", transaction.payee))
+                                    .monospace(),
+                            )
+                        } else {
+                            ui.label(RichText::new(&transaction.payee).monospace())
+                        };
+                        date_widget
+                    })
+                    .inner;
+
+                for posting in &transaction.postings {
+                    ui.horizontal(|ui| {
+                        ui.add_space(date_widget.rect.width() + ui.spacing().item_spacing.x);
+                        posting_ui(ui, posting);
+                    });
+                }
+            });
+        });
+    });
+}
+
+fn posting_ui(ui: &mut Ui, posting: &hledger_journal::Posting) {
+    ui.columns(2, |columns| {
+        columns[0].label(RichText::new(posting.account_name.join(":")).monospace());
+        if let Some(amount) = &posting.amount {
+            columns[1].with_layout(Layout::right_to_left(Align::Min), |ui| {
+                ui.label(&amount.commodity);
+                ui.label(amount.quantity.to_string());
+            });
+        }
     });
 }

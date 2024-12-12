@@ -17,8 +17,7 @@ pub struct Journal {
     includes: Vec<Journal>,
 }
 
-pub use hledger_parser::ParseError;
-pub use hledger_parser::Transaction;
+pub use hledger_parser::{Amount, ParseError, Posting, Transaction};
 
 #[derive(Debug, Clone, thiserror::Error)]
 pub enum Error {

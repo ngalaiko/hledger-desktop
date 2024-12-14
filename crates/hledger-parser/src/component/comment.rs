@@ -39,15 +39,19 @@ pub fn inline<'a>() -> impl Parser<'a, &'a str, Comment, extra::Full<Rich<'a, ch
     let prefixed_comment =
         text::newline().ignore_then(whitespace().repeated().at_least(1).ignore_then(comment));
     comment
+        .or_not()
         .then(prefixed_comment.repeated().collect::<Vec<_>>())
         .map(|(first, rest)| {
-            Comment(
+            if let Some(first) = first {
                 std::iter::once(first)
                     .chain(rest)
                     .collect::<Vec<_>>()
-                    .join("\n"),
-            )
+                    .join("\n")
+            } else {
+                rest.join("\n")
+            }
         })
+        .map(Comment)
 }
 
 #[cfg(test)]
@@ -85,6 +89,15 @@ mod tests {
             .parse("; a comment\n ; continuation")
             .into_result();
         assert_eq!(result, Ok(Comment(" a comment\n continuation".to_string())));
+    }
+
+    #[test]
+    fn inline_prefixed_newline() {
+        let result = inline()
+            .then_ignore(end())
+            .parse("\n ; a comment")
+            .into_result();
+        assert_eq!(result, Ok(Comment(" a comment".to_string())));
     }
 
     #[test]

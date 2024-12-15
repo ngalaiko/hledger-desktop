@@ -5,9 +5,7 @@ mod top_bar;
 use eframe::egui::{CentralPanel, Context, TopBottomPanel, Ui};
 use smol_macros::Executor;
 
-use crate::{
-    frames::Frames, persistance, render_mode::RenderMode, theme::Theme, window_info::WindowInfo,
-};
+use crate::{frames::Frames, render_mode::RenderMode, theme::Theme};
 
 #[derive(Default)]
 pub struct State {
@@ -15,7 +13,6 @@ pub struct State {
     pub active_tab_index: Option<usize>,
 
     pub theme: Theme,
-    pub window: WindowInfo,
     pub frames: Frames,
     pub render_mode: RenderMode,
 
@@ -57,22 +54,6 @@ impl State {
 
     pub fn set_render_mode(&mut self, render_mode: RenderMode) {
         self.render_mode = render_mode;
-    }
-
-    pub fn set_window_info(&mut self, window_info: WindowInfo) {
-        if self.window != window_info {
-            self.window = window_info;
-            self.should_save = true;
-        }
-    }
-
-    pub fn save(&mut self) {
-        if self.should_save {
-            if let Err(error) = persistance::save_state(self) {
-                tracing::error!("failed to save state: {}", error);
-            }
-            self.should_save = false;
-        }
     }
 }
 

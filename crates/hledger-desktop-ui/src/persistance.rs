@@ -5,13 +5,15 @@ use smol_macros::Executor;
 use tracing::instrument;
 
 use crate::app::window::tab;
-use crate::{app, theme::Theme, window_info::WindowInfo};
+use crate::{app, theme::Theme};
 
 #[instrument(skip_all)]
-pub fn load_state(executor: Arc<Executor<'static>>) -> Result<app::State, Error> {
-    PersistentState::load().map(|value| app::State {
+pub fn load_state(
+    storage: &dyn eframe::Storage,
+    executor: Arc<Executor<'static>>,
+) -> Result<app::State, Error> {
+    PersistentState::load(storage).map(|value| app::State {
         theme: value.theme,
-        window: value.window,
         tabs: value
             .tabs
             .into_iter()
@@ -23,8 +25,8 @@ pub fn load_state(executor: Arc<Executor<'static>>) -> Result<app::State, Error>
 }
 
 #[instrument(skip_all)]
-pub fn save_state(state: &app::State) -> Result<(), Error> {
-    PersistentState::from(state).save()
+pub fn save_state(storage: &mut dyn eframe::Storage, state: &app::State) -> Result<(), Error> {
+    PersistentState::from(state).save(storage)
 }
 
 #[derive(Serialize, Deserialize)]
@@ -35,7 +37,6 @@ struct TabState {
 #[derive(Default, Serialize, Deserialize)]
 struct PersistentState {
     theme: Theme,
-    window: WindowInfo,
     tabs: Vec<TabState>,
     active_tab_index: Option<usize>,
 }
@@ -52,7 +53,6 @@ impl From<&app::State> for PersistentState {
     fn from(value: &app::State) -> Self {
         Self {
             theme: value.theme,
-            window: value.window,
             active_tab_index: value.active_tab_index,
             tabs: value.tabs.iter().map(TabState::from).collect(),
         }
@@ -67,35 +67,20 @@ pub enum Error {
     Serde(#[from] serde_json::Error),
 }
 
+const STORAE_KEY: &str = "state";
+
 impl PersistentState {
-    pub fn save(&self) -> Result<(), Error> {
-        let local_data_dir = local_data_dir()?;
-        std::fs::create_dir_all(&local_data_dir)?;
-        let file = std::fs::File::options()
-            .write(true)
-            .create(true)
-            .truncate(true)
-            .open(local_data_dir.join("state.json"))?;
-        serde_json::to_writer_pretty(&file, self)?;
+    pub fn save(&self, storage: &mut dyn eframe::Storage) -> Result<(), Error> {
+        let state = serde_json::to_string(&self)?;
+        storage.set_string(STORAE_KEY, state);
         Ok(())
     }
 
-    pub fn load() -> Result<Self, Error> {
-        let local_data_dir = local_data_dir()?;
-        let path = local_data_dir.join("state.json");
-        if !path.exists() {
-            return Ok(Self::default());
+    pub fn load(storage: &dyn eframe::Storage) -> Result<Self, Error> {
+        if let Some(state) = storage.get_string(STORAE_KEY) {
+            serde_json::from_str(&state).map_err(Error::Serde)
+        } else {
+            Ok(Self::default())
         }
-        let file = std::fs::File::open(path)?;
-        serde_json::from_reader(file).map_err(Error::Serde)
     }
-}
-
-fn local_data_dir() -> Result<std::path::PathBuf, std::io::Error> {
-    directories_next::ProjectDirs::from("", "", "rocks.galaiko.hledger.desktop")
-        .map(|proj_dirs| proj_dirs.data_dir().to_path_buf())
-        .ok_or(std::io::Error::new(
-            std::io::ErrorKind::NotFound,
-            "local data directory not found",
-        ))
 }

@@ -5,4 +5,3 @@ pub mod persistance;
 pub mod render_mode;
 pub mod theme;
 pub mod widgets;
-pub mod window_info;

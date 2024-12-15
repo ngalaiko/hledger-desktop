@@ -9,7 +9,6 @@ use tracing_subscriber::filter::Targets;
 use tracing_subscriber::{fmt::format::FmtSpan, layer::SubscriberExt, Layer};
 
 use hledger_desktop_ui::app::App;
-use hledger_desktop_ui::persistance;
 
 #[apply(main!)]
 async fn main(executor: Arc<Executor<'static>>) {
@@ -17,16 +16,9 @@ async fn main(executor: Arc<Executor<'static>>) {
 
     tracing::info!("starting app");
 
-    let state = persistance::load_state(executor.clone())
-        .map_err(|error| tracing::error!(%error, "failed to load state"))
-        .unwrap_or_default();
-
     let native_options = eframe::NativeOptions {
         viewport: eframe::egui::ViewportBuilder {
-            fullscreen: Some(state.window.fullscreen),
-            maximized: Some(state.window.maximized),
-            inner_size: Some(state.window.size.into()),
-            position: state.window.position.map(Into::into),
+            title_shown: Some(false),
             fullsize_content_view: Some(true),
             titlebar_shown: Some(false),
             icon: Some(Arc::new(
@@ -39,9 +31,9 @@ async fn main(executor: Arc<Executor<'static>>) {
     };
 
     if let Err(error) = eframe::run_native(
-        "hledger",
+        "rocks.galaiko.hledger.desktop",
         native_options,
-        Box::new(|cc| Ok(Box::new(App::new(cc, executor, state)))),
+        Box::new(|cc| Ok(Box::new(App::new(cc, executor)))),
     ) {
         tracing::error!(%error, "failed to run the app");
         exit(2)

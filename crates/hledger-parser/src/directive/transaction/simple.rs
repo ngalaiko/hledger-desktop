@@ -15,6 +15,7 @@ pub struct Transaction {
     pub payee: String,
     pub description: Option<String>,
     pub postings: Vec<Posting>,
+    pub position: std::ops::Range<usize>,
 }
 
 pub fn transaction<'a>(
@@ -30,13 +31,14 @@ pub fn transaction<'a>(
                 .allow_leading()
                 .collect::<Vec<_>>(),
         )
-        .map(|((date, header), postings)| Transaction {
+        .map_with(|((date, header), postings), e| Transaction {
             date,
             status: header.as_ref().and_then(|h| h.status.clone()),
             code: header.as_ref().and_then(|h| h.code.clone()),
             payee: header.as_ref().map_or(String::new(), |h| h.payee.clone()),
             description: header.as_ref().and_then(|h| h.description.clone()),
             postings,
+            position: e.span().into_range(),
         })
 }
 
@@ -93,6 +95,7 @@ mod tests {
                         is_virtual: false,
                     }
                 ],
+                position: (0..260),
             })
         );
     }
@@ -140,6 +143,7 @@ mod tests {
                         is_virtual: false,
                     }
                 ],
+                position: (0..67),
             })
         );
     }
@@ -159,6 +163,7 @@ mod tests {
                 payee: String::new(),
                 description: None,
                 postings: vec![],
+                position: (0..8),
             })
         );
     }

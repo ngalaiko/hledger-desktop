@@ -3,12 +3,12 @@ use smol_macros::Executor;
 
 use crate::{journal, widgets};
 
-pub struct State {
+pub struct File {
     pub file_path: std::path::PathBuf,
     watcher: journal::Watcher,
 }
 
-impl State {
+impl File {
     #[must_use]
     pub fn name(&self) -> &str {
         self.file_path
@@ -27,7 +27,7 @@ impl State {
     }
 }
 
-pub fn ui(ui: &mut Ui, state: &mut State) {
+pub fn ui(ui: &mut Ui, state: &mut File) {
     let journal_guard = state.watcher.journal();
     let error_guard = state.watcher.error();
     if !error_guard.is_empty() {

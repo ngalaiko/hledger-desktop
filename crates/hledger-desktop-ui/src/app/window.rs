@@ -1,5 +1,5 @@
 mod bottom_bar;
-pub mod tab;
+pub mod file;
 mod top_bar;
 
 use eframe::egui::{CentralPanel, Context, TopBottomPanel, Ui};
@@ -9,8 +9,7 @@ use crate::{frames::Frames, render_mode::RenderMode, theme::Theme};
 
 #[derive(Default)]
 pub struct State {
-    pub tabs: Vec<tab::State>,
-    pub active_tab_index: Option<usize>,
+    pub file: Option<file::File>,
 
     pub theme: Theme,
     pub frames: Frames,
@@ -21,29 +20,17 @@ pub struct State {
 }
 
 impl State {
-    pub fn open_tab<P: AsRef<std::path::Path>>(
+    pub fn open_file<P: AsRef<std::path::Path>>(
         &mut self,
         executor: &Executor<'static>,
         file_path: P,
     ) {
-        let tab = tab::State::new(executor, file_path);
-        self.tabs.push(tab);
-        self.active_tab_index.replace(self.tabs.len() - 1);
+        self.file = Some(file::File::new(executor, file_path));
         self.should_save = true;
     }
 
-    pub fn set_active_tab(&mut self, index: usize) {
-        self.active_tab_index.replace(index);
-        self.should_save = true;
-    }
-
-    pub fn close_tab(&mut self, index: usize) {
-        self.tabs.remove(index);
-        if self.tabs.is_empty() {
-            self.active_tab_index.take();
-        } else {
-            self.active_tab_index = self.active_tab_index.map(|i| i.saturating_sub(1));
-        }
+    pub fn close_file(&mut self) {
+        self.file = None;
         self.should_save = true;
     }
 
@@ -64,12 +51,8 @@ pub fn render(ctx: &Context, executor: &Executor<'static>, state: &mut State) {
 }
 
 fn central_pane_ui(ui: &mut Ui, executor: &Executor<'static>, state: &mut State) {
-    if let Some(active_tab_index) = state.active_tab_index {
-        let active_tab = state
-            .tabs
-            .get_mut(active_tab_index)
-            .expect("active tab index is valid");
-        tab::ui(ui, active_tab);
+    if let Some(file) = &mut state.file {
+        file::ui(ui, file);
     } else {
         welcome_screen_ui(ui, executor, state);
     }
@@ -80,7 +63,7 @@ fn welcome_screen_ui(ui: &mut Ui, executor: &Executor<'static>, state: &mut Stat
         ui.heading("Welcome to hledger-desktop");
         if ui.button("Open a new file...").clicked() {
             if let Some(file_path) = rfd::FileDialog::new().pick_file() {
-                state.open_tab(executor, file_path);
+                state.open_file(executor, file_path);
             }
         }
 
@@ -91,7 +74,7 @@ fn welcome_screen_ui(ui: &mut Ui, executor: &Executor<'static>, state: &mut Stat
         if let Some(default_file) = default_file {
             let default_file_name = default_file.file_name().unwrap().to_str().unwrap();
             if ui.button(format!("Open {default_file_name}")).clicked() {
-                state.open_tab(executor, default_file);
+                state.open_file(executor, default_file);
             }
         }
     });

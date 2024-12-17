@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use smol_macros::Executor;
 use tracing::instrument;
 
-use crate::app::window::tab;
+use crate::app::window::file;
 use crate::{app, theme::Theme};
 
 #[instrument(skip_all)]
@@ -14,12 +14,9 @@ pub fn load_state(
 ) -> Result<app::State, Error> {
     PersistentState::load(storage).map(|value| app::State {
         theme: value.theme,
-        tabs: value
-            .tabs
-            .into_iter()
-            .map(|persistent| tab::State::new(&executor, persistent.file_path))
-            .collect(),
-        active_tab_index: value.active_tab_index,
+        file: value
+            .file
+            .map(|persistent| file::File::new(&executor, persistent.file_path)),
         ..app::State::default()
     })
 }
@@ -30,19 +27,18 @@ pub fn save_state(storage: &mut dyn eframe::Storage, state: &app::State) -> Resu
 }
 
 #[derive(Serialize, Deserialize)]
-struct TabState {
+struct FileState {
     file_path: std::path::PathBuf,
 }
 
 #[derive(Default, Serialize, Deserialize)]
 struct PersistentState {
     theme: Theme,
-    tabs: Vec<TabState>,
-    active_tab_index: Option<usize>,
+    file: Option<FileState>,
 }
 
-impl From<&tab::State> for TabState {
-    fn from(value: &crate::app::window::tab::State) -> Self {
+impl From<&file::File> for FileState {
+    fn from(value: &crate::app::window::file::File) -> Self {
         Self {
             file_path: value.file_path.clone(),
         }
@@ -53,8 +49,7 @@ impl From<&app::State> for PersistentState {
     fn from(value: &app::State) -> Self {
         Self {
             theme: value.theme,
-            active_tab_index: value.active_tab_index,
-            tabs: value.tabs.iter().map(TabState::from).collect(),
+            file: value.file.as_ref().map(FileState::from),
         }
     }
 }

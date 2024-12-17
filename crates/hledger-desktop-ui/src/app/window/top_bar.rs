@@ -8,7 +8,7 @@ pub fn ui(ui: &mut Ui, executor: &Executor<'static>, state: &mut State) {
     menu::bar(ui, |ui| {
         if cfg!(target_os = "macos") {
             macos_traffic_lights_box_ui(ui);
-            ui.separator();
+            ui.add_space(ui.spacing().item_spacing.x);
         }
         ui.menu_button("File", |ui| {
             if ui.button("Open").clicked() {

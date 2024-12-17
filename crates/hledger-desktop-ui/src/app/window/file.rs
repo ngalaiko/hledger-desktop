@@ -1,4 +1,4 @@
-use eframe::egui::{Align, Layout, RichText, TextStyle, Ui};
+use eframe::egui::{Align, CentralPanel, Layout, RichText, SidePanel, TextStyle, Ui};
 use smol_macros::Executor;
 
 use crate::{journal, widgets};
@@ -28,15 +28,24 @@ impl File {
 }
 
 pub fn ui(ui: &mut Ui, state: &mut File) {
-    let journal_guard = state.watcher.journal();
-    let error_guard = state.watcher.error();
-    if !error_guard.is_empty() {
-        ui.label("error");
-    } else if let Some(journal) = journal_guard.as_ref() {
-        transactions_list_ui(ui, journal.transactions().collect::<Vec<_>>().as_slice());
-    } else {
-        widgets::spinner_ui(ui);
-    }
+    SidePanel::left("tabs")
+        .resizable(false)
+        .default_width(0.0)
+        .show(ui.ctx(), |ui| {
+            let _ = ui.selectable_label(true, "Register");
+        });
+
+    CentralPanel::default().show(ui.ctx(), |ui| {
+        let journal_guard = state.watcher.journal();
+        let error_guard = state.watcher.error();
+        if !error_guard.is_empty() {
+            ui.label("error");
+        } else if let Some(journal) = journal_guard.as_ref() {
+            transactions_list_ui(ui, journal.transactions().collect::<Vec<_>>().as_slice());
+        } else {
+            widgets::spinner_ui(ui);
+        }
+    });
 }
 
 fn transactions_list_ui(ui: &mut Ui, transactions: &[&hledger_journal::Transaction]) {

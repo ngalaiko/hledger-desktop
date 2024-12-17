@@ -1,15 +1,31 @@
-use eframe::egui::{vec2, Align, Button, Layout, Sense, Ui};
+use eframe::egui::{menu, vec2, Align, Button, Layout, Sense, Ui};
 use smol_macros::Executor;
 
 use crate::app::State;
 use crate::theme::Theme;
 
-pub fn ui(ui: &mut Ui, _executor: &Executor<'static>, state: &mut State) {
-    ui.horizontal(|ui| {
+pub fn ui(ui: &mut Ui, executor: &Executor<'static>, state: &mut State) {
+    menu::bar(ui, |ui| {
         if cfg!(target_os = "macos") {
             macos_traffic_lights_box_ui(ui);
             ui.separator();
         }
+        ui.menu_button("File", |ui| {
+            if ui.button("Open").clicked() {
+                if let Some(file_path) = rfd::FileDialog::new().pick_file() {
+                    state.open_file(executor, file_path);
+                    ui.close_menu();
+                }
+            }
+
+            if ui
+                .add_enabled(state.file.is_some(), Button::new("Close"))
+                .clicked()
+            {
+                state.close_file();
+                ui.close_menu();
+            }
+        });
 
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
             dark_light_mode_switch_ui(ui, state);

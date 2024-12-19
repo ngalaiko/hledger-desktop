@@ -1,7 +1,7 @@
 use chumsky::prelude::*;
 
+use crate::component::status::{status, Status};
 use crate::component::whitespace::whitespace;
-use crate::directive::transaction::status::{status, Status};
 use crate::state::State;
 use crate::utils::end_of_line;
 

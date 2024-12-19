@@ -25,7 +25,7 @@ use crate::directive::year::year;
 use crate::state::State;
 
 pub use crate::directive::account::Account;
-pub use crate::directive::auto_postings::{AutoPosting, AutosPostingRule, Query, Term};
+pub use crate::directive::auto_postings::{AutoPosting, AutosPostingRule};
 pub use crate::directive::commodity::Commodity;
 pub use crate::directive::decimal_mark::DecimalMark;
 pub use crate::directive::include::{Format, Include};
@@ -33,7 +33,7 @@ pub use crate::directive::payee::Payee;
 pub use crate::directive::price::Price;
 pub use crate::directive::tag::Tag;
 pub use crate::directive::transaction::{
-    Assertion, Periodic as PeriodicTransaction, Posting, Simple as Transaction, Status,
+    Assertion, Periodic as PeriodicTransaction, Posting, Simple as Transaction,
 };
 pub use crate::directive::year::Year;
 

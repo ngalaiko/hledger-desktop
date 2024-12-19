@@ -1,10 +1,10 @@
 use chumsky::prelude::*;
 
 use crate::component::period::{period, Period};
+use crate::component::status::Status;
 use crate::component::whitespace::whitespace;
 use crate::directive::transaction::header::header;
 use crate::directive::transaction::posting::{posting, Posting};
-use crate::directive::transaction::status::Status;
 use crate::state::State;
 
 #[derive(Clone, Debug, PartialEq)]

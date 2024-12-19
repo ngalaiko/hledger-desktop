@@ -1,6 +1,12 @@
+mod condition;
+
 use chumsky::prelude::*;
 
-use crate::{component::whitespace::whitespace, state::State};
+use crate::component::whitespace::whitespace;
+use crate::state::State;
+
+use self::condition::condition;
+pub use self::condition::Condition;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Query {
@@ -9,9 +15,8 @@ pub struct Query {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Term {
-    pub r#type: Option<String>,
+    pub condition: Condition,
     pub is_not: bool,
-    pub value: String,
 }
 
 pub fn query<'a>() -> impl Parser<'a, &'a str, Query, extra::Full<Rich<'a, char>, State, ()>> {
@@ -23,35 +28,12 @@ pub fn query<'a>() -> impl Parser<'a, &'a str, Query, extra::Full<Rich<'a, char>
 }
 
 fn term<'a>() -> impl Parser<'a, &'a str, Term, extra::Full<Rich<'a, char>, State, ()>> {
-    let value = any()
-        .and_is(text::newline().not())
-        .and_is(whitespace().not())
-        .repeated()
-        .at_least(1)
-        .collect::<String>();
-    let quoted_value = any()
-        .and_is(text::newline().not())
-        .and_is(just("'").not()) // indicated end of quote
-        .repeated()
-        .at_least(1)
-        .collect::<String>()
-        .delimited_by(just("'"), just("'"));
-    let r#type = just("date")
-        .or(just("status"))
-        .or(just("desc"))
-        .or(just("cur"))
-        .or(just("amt"))
-        .then_ignore(just(":"))
-        .map(ToString::to_string);
-
     just("not:")
         .or_not()
-        .then(r#type.or_not())
-        .then(quoted_value.or(value))
-        .map(|((is_not, r#type), value)| Term {
-            r#type,
+        .then(condition())
+        .map(|(is_not, condition)| Term {
+            condition,
             is_not: is_not.is_some(),
-            value,
         })
 }
 
@@ -70,8 +52,7 @@ mod tests {
             Ok(Query {
                 terms: vec![Term {
                     is_not: false,
-                    value: String::from("personal care"),
-                    r#type: None,
+                    condition: Condition::Account(String::from("personal care")),
                 }]
             })
         );
@@ -88,8 +69,7 @@ mod tests {
             Ok(Query {
                 terms: vec![Term {
                     is_not: false,
-                    value: String::from("expenses:dining"),
-                    r#type: None,
+                    condition: Condition::Account(String::from("expenses:dining")),
                 }]
             })
         );
@@ -103,8 +83,7 @@ mod tests {
             Ok(Query {
                 terms: vec![Term {
                     is_not: false,
-                    value: String::from("dining"),
-                    r#type: None,
+                    condition: Condition::Account(String::from("dining")),
                 }]
             })
         );
@@ -122,13 +101,11 @@ mod tests {
                 terms: vec![
                     Term {
                         is_not: false,
-                        value: String::from("dining"),
-                        r#type: None,
+                        condition: Condition::Account(String::from("dining")),
                     },
                     Term {
                         is_not: false,
-                        value: String::from("groceries"),
-                        r#type: None,
+                        condition: Condition::Account(String::from("groceries")),
                     }
                 ]
             })
@@ -146,8 +123,7 @@ mod tests {
             Ok(Query {
                 terms: vec![Term {
                     is_not: true,
-                    value: String::from("opening closing"),
-                    r#type: None,
+                    condition: Condition::Account(String::from("opening closing")),
                 }]
             })
         );
@@ -164,8 +140,7 @@ mod tests {
             Ok(Query {
                 terms: vec![Term {
                     is_not: false,
-                    value: String::from("opening|closing"),
-                    r#type: Some(String::from("desc")),
+                    condition: Condition::Description(String::from("opening|closing")),
                 }]
             })
         );
@@ -182,8 +157,7 @@ mod tests {
             Ok(Query {
                 terms: vec![Term {
                     is_not: true,
-                    value: String::from("opening|closing"),
-                    r#type: Some(String::from("desc")),
+                    condition: Condition::Description(String::from("opening|closing")),
                 }]
             })
         );
@@ -201,23 +175,19 @@ mod tests {
                 terms: vec![
                     Term {
                         is_not: false,
-                        value: String::from("account"),
-                        r#type: None,
+                        condition: Condition::Account(String::from("account")),
                     },
                     Term {
                         is_not: false,
-                        value: String::from("testing account"),
-                        r#type: None,
+                        condition: Condition::Account(String::from("testing account")),
                     },
                     Term {
                         is_not: false,
-                        value: String::from("\\$"),
-                        r#type: Some(String::from("cur")),
+                        condition: Condition::Currency(String::from("\\$")),
                     },
                     Term {
                         is_not: true,
-                        value: String::from("opening|closing"),
-                        r#type: Some(String::from("desc")),
+                        condition: Condition::Description(String::from("opening|closing")),
                     }
                 ]
             })

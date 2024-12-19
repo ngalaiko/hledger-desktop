@@ -5,9 +5,9 @@ mod assertion;
 use crate::component::account_name::{account_name, AccountName};
 use crate::component::amount::{amount, Amount};
 use crate::component::price::{amount_price, AmountPrice};
+use crate::component::status::{status, Status};
 use crate::component::whitespace::whitespace;
 use crate::directive::transaction::posting::assertion::assertion;
-use crate::directive::transaction::status::{status, Status};
 use crate::state::State;
 use crate::utils::end_of_line;
 

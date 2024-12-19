@@ -1,16 +1,12 @@
-mod query;
-
 use chumsky::prelude::*;
 
 use crate::component::account_name::{account_name, AccountName};
 use crate::component::amount::{amount, Amount};
 use crate::component::comment::inline;
+use crate::component::query::{query, Query};
 use crate::component::whitespace::whitespace;
-use crate::directive::auto_postings::query::query;
 use crate::state::State;
 use crate::utils::end_of_line;
-
-pub use crate::directive::auto_postings::query::{Query, Term};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct AutosPostingRule {
@@ -75,7 +71,7 @@ pub fn auto_postings<'a>(
 mod tests {
     use rust_decimal::Decimal;
 
-    use self::tests::query::Term;
+    use crate::component::query::{Condition, Term};
 
     use super::*;
 
@@ -94,9 +90,8 @@ mod tests {
             Ok(AutosPostingRule {
                 query: Query {
                     terms: vec![Term {
-                        r#type: None,
                         is_not: false,
-                        value: String::from("expenses:gifts"),
+                        condition: Condition::Account(String::from("expenses:gifts")),
                     }],
                 },
                 postings: vec![

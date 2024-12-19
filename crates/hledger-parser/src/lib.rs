@@ -2,6 +2,8 @@
 //! See [hledger documentation](https://hledger.org/hledger.html)
 //! for journal format description.
 
+#![recursion_limit = "256"]
+
 mod component;
 mod directive;
 mod state;
@@ -17,11 +19,27 @@ pub use crate::component::amount::Amount;
 pub use crate::component::period::interval::Interval;
 pub use crate::component::period::Period;
 pub use crate::component::price::AmountPrice;
+pub use crate::component::query::{Condition, Query, Term};
+pub use crate::component::status::Status;
 pub use crate::directive::{
     Account, Assertion, AutoPosting, AutosPostingRule, Commodity, DecimalMark, Directive, Format,
-    Include, Payee, PeriodicTransaction, Posting, Price, Query, Status, Tag, Term, Transaction,
-    Year,
+    Include, Payee, PeriodicTransaction, Posting, Price, Tag, Transaction, Year,
 };
+
+use crate::component::query::query;
+
+/// Parses the given content into a hledger query.
+///
+/// # Errors
+///
+/// Will return a list of parsing errors if input is not a query.
+pub fn parse_query<I: AsRef<str>>(contents: I) -> Result<Query, Vec<ParseError>> {
+    query()
+        .then_ignore(end())
+        .parse_with_state(contents.as_ref(), &mut State::default())
+        .into_result()
+        .map_err(|errors| errors.into_iter().map(ParseError::from).collect())
+}
 
 /// Parses the given content into a list of Hledger journal directives.
 ///

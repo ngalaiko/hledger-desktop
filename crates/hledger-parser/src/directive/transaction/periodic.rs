@@ -46,7 +46,7 @@ pub fn transaction<'a>(
 mod tests {
     use rust_decimal::Decimal;
 
-    use crate::component::{amount::Amount, period::interval::Interval};
+    use crate::component::{account_name::AccountName, amount::Amount, period::interval::Interval};
 
     use super::*;
 
@@ -75,7 +75,10 @@ mod tests {
                 postings: vec![
                     Posting {
                         status: None,
-                        account_name: vec![String::from("expenses"), String::from("utilities")],
+                        account_name: AccountName::from_parts(&[
+                            String::from("expenses"),
+                            String::from("utilities")
+                        ]),
                         amount: Some(Amount {
                             quantity: Decimal::new(400, 0),
                             commodity: String::from("$"),
@@ -86,11 +89,11 @@ mod tests {
                     },
                     Posting {
                         status: None,
-                        account_name: vec![
+                        account_name: AccountName::from_parts(&[
                             String::from("assets"),
                             String::from("bank"),
                             String::from("checking")
-                        ],
+                        ]),
                         amount: None,
                         price: None,
                         assertion: None,
@@ -126,7 +129,10 @@ mod tests {
                 postings: vec![
                     Posting {
                         status: None,
-                        account_name: vec![String::from("expenses"), String::from("rent")],
+                        account_name: AccountName::from_parts(&[
+                            String::from("expenses"),
+                            String::from("rent")
+                        ]),
                         amount: Some(Amount {
                             quantity: Decimal::new(1000, 0),
                             commodity: String::from("$"),
@@ -137,7 +143,10 @@ mod tests {
                     },
                     Posting {
                         status: None,
-                        account_name: vec![String::from("expenses"), String::from("food")],
+                        account_name: AccountName::from_parts(&[
+                            String::from("expenses"),
+                            String::from("food")
+                        ]),
                         amount: Some(Amount {
                             quantity: Decimal::new(500, 0),
                             commodity: String::from("$"),

@@ -2,7 +2,7 @@ mod query;
 
 use chumsky::prelude::*;
 
-use crate::component::account_name::account_name;
+use crate::component::account_name::{account_name, AccountName};
 use crate::component::amount::{amount, Amount};
 use crate::component::comment::inline;
 use crate::component::whitespace::whitespace;
@@ -20,7 +20,7 @@ pub struct AutosPostingRule {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct AutoPosting {
-    pub account_name: Vec<String>,
+    pub account_name: AccountName,
     pub is_virtual: bool,
     pub amount: Amount,
     pub is_mul: bool,
@@ -101,11 +101,11 @@ mod tests {
                 },
                 postings: vec![
                     AutoPosting {
-                        account_name: vec![
+                        account_name: AccountName::from_parts(&[
                             String::from("assets"),
                             String::from("checking"),
                             String::from("gifts")
-                        ],
+                        ]),
                         is_virtual: false,
                         is_mul: true,
                         amount: Amount {
@@ -114,7 +114,10 @@ mod tests {
                         },
                     },
                     AutoPosting {
-                        account_name: vec![String::from("assets"), String::from("checking"),],
+                        account_name: AccountName::from_parts(&[
+                            String::from("assets"),
+                            String::from("checking")
+                        ]),
                         is_virtual: true,
                         is_mul: false,
                         amount: Amount {

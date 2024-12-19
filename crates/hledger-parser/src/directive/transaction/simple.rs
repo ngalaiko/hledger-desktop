@@ -46,7 +46,7 @@ pub fn transaction<'a>(
 mod tests {
     use rust_decimal::Decimal;
 
-    use crate::component::amount::Amount;
+    use crate::component::{account_name::AccountName, amount::Amount};
 
     use super::*;
 
@@ -73,11 +73,11 @@ mod tests {
                 postings: vec![
                     Posting {
                         status: None,
-                        account_name: vec![
+                        account_name: AccountName::from_parts(&[
                             String::from("assets"),
                             String::from("bank"),
                             String::from("checking"),
-                        ],
+                        ]),
                         amount: Some(Amount {
                             quantity: Decimal::new(1, 0),
                             commodity: String::from("$"),
@@ -88,7 +88,10 @@ mod tests {
                     },
                     Posting {
                         status: None,
-                        account_name: vec![String::from("income"), String::from("salary"),],
+                        account_name: AccountName::from_parts(&[
+                            String::from("income"),
+                            String::from("salary")
+                        ]),
                         amount: None,
                         price: None,
                         assertion: None,
@@ -121,11 +124,11 @@ mod tests {
                 postings: vec![
                     Posting {
                         status: None,
-                        account_name: vec![
+                        account_name: AccountName::from_parts(&[
                             String::from("assets"),
                             String::from("bank"),
                             String::from("checking"),
-                        ],
+                        ]),
                         amount: Some(Amount {
                             quantity: Decimal::new(1, 0),
                             commodity: String::from("$"),
@@ -136,7 +139,10 @@ mod tests {
                     },
                     Posting {
                         status: None,
-                        account_name: vec![String::from("income"), String::from("salary")],
+                        account_name: AccountName::from_parts(&[
+                            String::from("income"),
+                            String::from("salary")
+                        ]),
                         amount: None,
                         price: None,
                         assertion: None,

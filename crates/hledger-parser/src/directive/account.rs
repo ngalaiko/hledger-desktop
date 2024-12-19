@@ -1,13 +1,13 @@
 use chumsky::prelude::*;
 
-use crate::component::account_name::account_name;
+use crate::component::account_name::{account_name, AccountName};
 use crate::component::whitespace::whitespace;
 use crate::state::State;
 use crate::utils::end_of_line_prefixed;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Account {
-    pub account_name: Vec<String>,
+    pub account_name: AccountName,
 }
 
 pub fn account<'a>() -> impl Parser<'a, &'a str, Account, extra::Full<Rich<'a, char>, State, ()>> {
@@ -33,11 +33,11 @@ mod tests {
         assert_eq!(
             result,
             Ok(Account {
-                account_name: vec![
+                account_name: AccountName::from_parts(&[
                     String::from("one"),
                     String::from("two"),
                     String::from("three"),
-                ]
+                ])
             })
         );
     }
@@ -51,11 +51,11 @@ mod tests {
         assert_eq!(
             result,
             Ok(Account {
-                account_name: vec![
+                account_name: AccountName::from_parts(&[
                     String::from("one"),
                     String::from("two"),
                     String::from("three"),
-                ]
+                ])
             })
         );
     }
@@ -69,11 +69,11 @@ mod tests {
         assert_eq!(
             result,
             Ok(Account {
-                account_name: vec![
+                account_name: AccountName::from_parts(&[
                     String::from("one"),
                     String::from("two"),
                     String::from("three ; comment"),
-                ]
+                ])
             })
         );
     }
@@ -87,11 +87,11 @@ mod tests {
         assert_eq!(
             result,
             Ok(Account {
-                account_name: vec![
+                account_name: AccountName::from_parts(&[
                     String::from("one"),
                     String::from("two"),
                     String::from("three"),
-                ]
+                ])
             })
         );
     }

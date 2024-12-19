@@ -2,7 +2,7 @@ use chumsky::prelude::*;
 
 mod assertion;
 
-use crate::component::account_name::account_name;
+use crate::component::account_name::{account_name, AccountName};
 use crate::component::amount::{amount, Amount};
 use crate::component::price::{amount_price, AmountPrice};
 use crate::component::whitespace::whitespace;
@@ -16,7 +16,7 @@ pub use crate::directive::transaction::posting::assertion::Assertion;
 #[derive(Debug, Clone, Hash, PartialEq)]
 pub struct Posting {
     pub status: Option<Status>,
-    pub account_name: Vec<String>,
+    pub account_name: AccountName,
     pub is_virtual: bool,
     pub amount: Option<Amount>,
     pub price: Option<AmountPrice>,
@@ -69,11 +69,11 @@ mod tests {
             result,
             Ok(Posting {
                 status: Some(Status::Pending),
-                account_name: vec![
+                account_name: AccountName::from_parts(&[
                     String::from("assets"),
                     String::from("bank"),
                     String::from("checking")
-                ],
+                ]),
                 amount: Some(Amount {
                     quantity: Decimal::new(1, 0),
                     commodity: String::from("$"),
@@ -95,11 +95,11 @@ mod tests {
             result,
             Ok(Posting {
                 status: Some(Status::Pending),
-                account_name: vec![
+                account_name: AccountName::from_parts(&[
                     String::from("assets"),
                     String::from("bank"),
                     String::from("checking")
-                ],
+                ]),
                 amount: None,
                 price: None,
                 assertion: None,
@@ -118,11 +118,11 @@ mod tests {
             result,
             Ok(Posting {
                 status: None,
-                account_name: vec![
+                account_name: AccountName::from_parts(&[
                     String::from("assets"),
                     String::from("bank"),
                     String::from("checking"),
-                ],
+                ]),
                 amount: Some(Amount {
                     quantity: Decimal::new(1, 0),
                     commodity: String::from("$"),
@@ -147,11 +147,11 @@ mod tests {
             result,
             Ok(Posting {
                 status: None,
-                account_name: vec![
+                account_name: AccountName::from_parts(&[
                     String::from("assets"),
                     String::from("bank"),
                     String::from("checking"),
-                ],
+                ]),
                 amount: None,
                 price: None,
                 assertion: None,
@@ -170,11 +170,11 @@ mod tests {
             result,
             Ok(Posting {
                 status: None,
-                account_name: vec![
+                account_name: AccountName::from_parts(&[
                     String::from("assets"),
                     String::from("bank"),
                     String::from("checking"),
-                ],
+                ]),
                 amount: None,
                 price: None,
                 assertion: None,
@@ -193,11 +193,11 @@ mod tests {
             result,
             Ok(Posting {
                 status: None,
-                account_name: vec![
+                account_name: AccountName::from_parts(&[
                     String::from("assets"),
                     String::from("bank"),
                     String::from("checking"),
-                ],
+                ]),
                 amount: Some(Amount {
                     quantity: Decimal::new(1, 0),
                     commodity: String::from("EUR"),
@@ -230,11 +230,11 @@ mod tests {
             result,
             Ok(Posting {
                 status: None,
-                account_name: vec![
+                account_name: AccountName::from_parts(&[
                     String::from("assets"),
                     String::from("bank"),
                     String::from("checking"),
-                ],
+                ]),
                 amount: Some(Amount {
                     quantity: Decimal::new(1, 0),
                     commodity: String::from("USD"),
@@ -264,11 +264,11 @@ mod tests {
             result,
             Ok(Posting {
                 status: None,
-                account_name: vec![
+                account_name: AccountName::from_parts(&[
                     String::from("assets"),
                     String::from("bank"),
                     String::from("checking"),
-                ],
+                ]),
                 amount: Some(Amount {
                     quantity: Decimal::new(1, 0),
                     commodity: String::from("USD"),
@@ -293,11 +293,11 @@ mod tests {
             result,
             Ok(Posting {
                 status: None,
-                account_name: vec![
+                account_name: AccountName::from_parts(&[
                     String::from("assets"),
                     String::from("bank"),
                     String::from("checking"),
-                ],
+                ]),
                 amount: Some(Amount {
                     quantity: Decimal::new(1, 0),
                     commodity: String::from("$"),
@@ -319,11 +319,11 @@ mod tests {
             result,
             Ok(Posting {
                 status: None,
-                account_name: vec![
+                account_name: AccountName::from_parts(&[
                     String::from("assets"),
                     String::from("bank"),
                     String::from("checking $1"),
-                ],
+                ]),
                 amount: None,
                 price: None,
                 assertion: None,

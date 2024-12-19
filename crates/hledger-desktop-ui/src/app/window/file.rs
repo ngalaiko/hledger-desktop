@@ -118,7 +118,7 @@ fn transaction_ui(ui: &mut Ui, transaction: &hledger_journal::Transaction) {
 
 fn posting_ui(ui: &mut Ui, posting: &hledger_journal::Posting) {
     ui.columns(2, |columns| {
-        columns[0].label(RichText::new(posting.account_name.join(":")).monospace());
+        columns[0].label(RichText::new(posting.account_name.to_string()).monospace());
         if let Some(amount) = &posting.amount {
             columns[1].with_layout(Layout::right_to_left(Align::Min), |ui| {
                 ui.label(&amount.commodity);

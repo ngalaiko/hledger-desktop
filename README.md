@@ -15,7 +15,7 @@ yet to be determined. first, i'd like to explore my journals visually.
 probably want a crud to manually update them.
 
 [hledger-desktop-ui]: ./crates/hledger-desktop-ui/
-[hledger-journal]: ./crates/hledger-hournal/
+[hledger-journal]: ./crates/hledger-journal/
 [hledger-parser]: ./crates/hledger-parser/
 [iced]: https://iced.rs
 [egui]: https://egui.rs

@@ -1,6 +1,6 @@
 [package]
-name = "hledger-desktop-ui"
-description = "UI for the hledger accounting tool"
+name = "hledger-desktop"
+description = "Desktop app for the hledger accounting tool"
 version = "0.0.1"
 authors = ["Nikita Galaiko <nikita@galaiko.rocks>"]
 edition = "2021"

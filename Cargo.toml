@@ -1,6 +1,6 @@
 [workspace]
 members = [
-    "crates/hledger-desktop-ui",
+    "crates/hledger-desktop",
     "crates/hledger-journal",
     "crates/hledger-parser",
 ]

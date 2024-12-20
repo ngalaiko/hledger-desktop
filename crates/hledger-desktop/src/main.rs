@@ -8,7 +8,7 @@ use tracing::{metadata::LevelFilter, subscriber::set_global_default};
 use tracing_subscriber::filter::Targets;
 use tracing_subscriber::{fmt::format::FmtSpan, layer::SubscriberExt, Layer};
 
-use hledger_desktop_ui::app::App;
+use hledger_desktop::app::App;
 
 #[apply(main!)]
 async fn main(executor: Arc<Executor<'static>>) {

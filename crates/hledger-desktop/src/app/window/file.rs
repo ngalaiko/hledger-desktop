@@ -30,9 +30,9 @@ impl File {
 pub fn ui(ui: &mut Ui, state: &mut File) {
     SidePanel::left("tabs")
         .resizable(false)
-        .default_width(0.0)
+        .default_width(80.0)
         .show(ui.ctx(), |ui| {
-            let _ = ui.selectable_label(true, "Register");
+            let _ = ui.selectable_label(true, RichText::new("Register").monospace());
         });
 
     CentralPanel::default().show(ui.ctx(), |ui| {

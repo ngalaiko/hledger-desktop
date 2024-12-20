@@ -54,18 +54,24 @@ pub enum Directive {
 
 pub fn directive<'a>() -> impl Parser<'a, &'a str, Directive, extra::Full<Rich<'a, char>, State, ()>>
 {
+    // .boxed() at the end of every choice option is important to not blow up compilation
+    // complexity.
+    //
+    // see https://github.com/zesterer/chumsky/issues/13
     choice((
-        account().map(Directive::Account),
-        auto_postings().map(Directive::AutoPostings),
-        commodity().map(Directive::Commodity),
-        decimal_mark().map(Directive::DecimalMark),
-        include().map(Directive::Include),
-        payee().map(Directive::Payee),
-        price().map(Directive::Price),
-        tag().map(Directive::Tag),
-        transaction::simple().map(Directive::Transaction),
-        transaction::periodic().map(Directive::PeriodicTransaction),
-        year().map(Directive::Year),
+        account().map(Directive::Account).boxed(),
+        auto_postings().map(Directive::AutoPostings).boxed(),
+        commodity().map(Directive::Commodity).boxed(),
+        decimal_mark().map(Directive::DecimalMark).boxed(),
+        include().map(Directive::Include).boxed(),
+        payee().map(Directive::Payee).boxed(),
+        price().map(Directive::Price).boxed(),
+        tag().map(Directive::Tag).boxed(),
+        transaction::simple().map(Directive::Transaction).boxed(),
+        transaction::periodic()
+            .map(Directive::PeriodicTransaction)
+            .boxed(),
+        year().map(Directive::Year).boxed(),
     ))
 }
 

@@ -87,13 +87,15 @@ pub fn amount<'a>() -> impl Parser<'a, &'a str, Amount, extra::Full<Rich<'a, cha
         quantity,
         ..Amount::default()
     });
-    sign_quantity_commodity
-        .or(quantity_sign_commodity)
-        .or(sign_commodity_quantity)
-        .or(commodity_sign_quantity)
-        .or(quantity_commodity)
-        .or(commodity_quantity)
-        .or(just_quantity)
+    choice((
+        sign_quantity_commodity,
+        quantity_sign_commodity,
+        sign_commodity_quantity,
+        commodity_sign_quantity,
+        quantity_commodity,
+        commodity_quantity,
+        just_quantity,
+    ))
 }
 
 #[cfg(test)]

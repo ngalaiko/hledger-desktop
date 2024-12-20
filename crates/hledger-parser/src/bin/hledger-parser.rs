@@ -1,5 +1,3 @@
-#![recursion_limit = "256"]
-
 use ariadne::{Color, Config, IndexType, Label, Report, ReportKind, Source};
 use clap::Parser;
 

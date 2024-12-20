@@ -54,29 +54,31 @@ pub enum Directive {
 
 pub fn directive<'a>() -> impl Parser<'a, &'a str, Directive, extra::Full<Rich<'a, char>, State, ()>>
 {
-    account()
-        .map(Directive::Account)
-        .or(auto_postings().map(Directive::AutoPostings))
-        .or(commodity().map(Directive::Commodity))
-        .or(decimal_mark().map(Directive::DecimalMark))
-        .or(include().map(Directive::Include))
-        .or(payee().map(Directive::Payee))
-        .or(price().map(Directive::Price))
-        .or(tag().map(Directive::Tag))
-        .or(transaction::simple().map(Directive::Transaction))
-        .or(transaction::periodic().map(Directive::PeriodicTransaction))
-        .or(year().map(Directive::Year))
+    choice((
+        account().map(Directive::Account),
+        auto_postings().map(Directive::AutoPostings),
+        commodity().map(Directive::Commodity),
+        decimal_mark().map(Directive::DecimalMark),
+        include().map(Directive::Include),
+        payee().map(Directive::Payee),
+        price().map(Directive::Price),
+        tag().map(Directive::Tag),
+        transaction::simple().map(Directive::Transaction),
+        transaction::periodic().map(Directive::PeriodicTransaction),
+        year().map(Directive::Year),
+    ))
 }
 
 pub fn directives<'a>(
 ) -> impl Parser<'a, &'a str, Vec<Directive>, extra::Full<Rich<'a, char>, State, ()>> {
-    directive()
-        .map(Some)
-        .or(inline().map(|_| None))
-        .or(line().map(|_| None))
-        .or(block().map(|_| None))
-        .or(whitespace().repeated().map(|()| None))
-        .separated_by(text::newline())
-        .collect::<Vec<_>>()
-        .map(|directives| directives.into_iter().flatten().collect())
+    choice((
+        directive().map(Some),
+        inline().map(|_| None),
+        line().map(|_| None),
+        block().map(|_| None),
+        whitespace().repeated().map(|()| None),
+    ))
+    .separated_by(text::newline())
+    .collect::<Vec<_>>()
+    .map(|directives| directives.into_iter().flatten().collect())
 }

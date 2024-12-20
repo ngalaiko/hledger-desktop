@@ -2,9 +2,8 @@
 //! See [hledger documentation](https://hledger.org/hledger.html)
 //! for journal format description.
 
-#![recursion_limit = "256"]
-
 mod component;
+
 mod directive;
 mod state;
 mod utils;

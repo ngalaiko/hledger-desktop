@@ -14,7 +14,7 @@ pub fn commodity<'a>() -> impl Parser<'a, &'a str, String, extra::Full<Rich<'a, 
         .collect::<String>()
         .padded_by(just("\""));
 
-    symbol.or(quoted).or(simple)
+    choice((symbol, quoted, simple))
 }
 
 #[cfg(test)]

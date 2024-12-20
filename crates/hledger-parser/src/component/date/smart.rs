@@ -7,20 +7,22 @@ use crate::{component::whitespace::whitespace, state::State};
 
 pub fn date<'a>(
 ) -> impl Parser<'a, &'a str, chrono::NaiveDate, extra::Full<Rich<'a, char>, State, ()>> {
-    periods_ahead()
-        .or(periods_ago())
-        .or(n_periods())
-        .or(rel_word_period())
-        .or(words())
-        .or(rel_word_period())
-        .or(month_day())
-        .or(year_month_day())
-        .or(start_of_month_numeric())
-        .or(eight_digits())
-        .or(six_digits())
-        .or(four_digits())
-        .or(just_day())
-        .or(month_name())
+    choice((
+        periods_ahead(),
+        periods_ago(),
+        n_periods(),
+        rel_word_period(),
+        words(),
+        rel_word_period(),
+        month_day(),
+        year_month_day(),
+        start_of_month_numeric(),
+        eight_digits(),
+        six_digits(),
+        four_digits(),
+        just_day(),
+        month_name(),
+    ))
 }
 
 #[derive(Debug, Clone)]

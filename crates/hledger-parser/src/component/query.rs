@@ -24,7 +24,7 @@ pub fn query<'a>() -> impl Parser<'a, &'a str, Vec<Term>, extra::Full<Rich<'a, c
 fn term<'a>() -> impl Parser<'a, &'a str, Term, extra::Full<Rich<'a, char>, State, ()>> {
     just("not:")
         .or_not()
-        .then(condition())
+        .then(condition().boxed())
         .map(|(is_not, condition)| Term {
             condition,
             is_not: is_not.is_some(),

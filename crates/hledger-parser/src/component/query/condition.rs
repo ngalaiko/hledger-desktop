@@ -59,15 +59,17 @@ pub fn condition<'a>() -> impl Parser<'a, &'a str, Condition, extra::Full<Rich<'
     let amount = amount_condition().map(Condition::Amount);
     let date = just("date:").ignore_then(period()).map(Condition::Date);
 
-    status
-        .or(amount)
-        .or(date)
-        .or(code)
-        .or(currency)
-        .or(description)
-        .or(payee)
-        .or(account_prefixed)
-        .or(string_value().map(Condition::Account))
+    choice((
+        status,
+        amount,
+        date,
+        code,
+        currency,
+        description,
+        payee,
+        account_prefixed,
+        string_value().map(Condition::Account),
+    ))
 }
 
 fn string_value<'a>() -> impl Parser<'a, &'a str, String, extra::Full<Rich<'a, char>, State, ()>> {
@@ -84,7 +86,7 @@ fn string_value<'a>() -> impl Parser<'a, &'a str, String, extra::Full<Rich<'a, c
         .at_least(1)
         .collect::<String>()
         .delimited_by(just("'"), just("'"));
-    quoted_value.or(value)
+    choice((quoted_value, value))
 }
 
 fn amount_condition<'a>() -> impl Parser<'a, &'a str, Amount, extra::Full<Rich<'a, char>, State, ()>>
@@ -107,10 +109,7 @@ fn amount_condition<'a>() -> impl Parser<'a, &'a str, Amount, extra::Full<Rich<'
         .map(|(sign, quantity)| Amount::GreaterOrEqual(sign, quantity));
 
     just("amt:").ignore_then(
-        less_or_equal
-            .or(less)
-            .or(greater_or_equal)
-            .or(greater)
+        choice((less_or_equal, less, greater, greater_or_equal))
             .delimited_by(just("'"), just("'"))
             .or(equal),
     )

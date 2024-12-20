@@ -21,13 +21,15 @@ pub fn format<'a>() -> impl Parser<'a, &'a str, Format, extra::Full<Rich<'a, cha
     let semicolon_sv = just("ssv").map(|_| Format::Ssv);
     let tab_sv = just("tsv").map(|_| Format::Tsv);
     let rules = just("rules").map(|_| Format::Rules);
-    journal
-        .or(timeclock)
-        .or(timedot)
-        .or(comma_sv)
-        .or(semicolon_sv)
-        .or(tab_sv)
-        .or(rules)
+    choice((
+        journal,
+        timeclock,
+        timedot,
+        comma_sv,
+        semicolon_sv,
+        tab_sv,
+        rules,
+    ))
 }
 
 #[cfg(test)]

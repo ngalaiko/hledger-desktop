@@ -51,21 +51,23 @@ pub fn period<'a>() -> impl Parser<'a, &'a str, Period, extra::Full<Rich<'a, cha
         end: None,
     });
 
-    let begin_end = quarter()
-        .or(year_quarter())
-        .or(begin_end())
-        .or(just_end())
-        .or(begin())
-        .or(year_month_day())
-        .or(year_month())
-        .or(year())
-        .map(|(begin, end)| Period {
-            interval: None,
-            begin,
-            end,
-        });
+    let begin_end = choice((
+        quarter(),
+        year_quarter(),
+        begin_end(),
+        just_end(),
+        begin(),
+        year_month_day(),
+        year_month(),
+        year(),
+    ))
+    .map(|(begin, end)| Period {
+        interval: None,
+        begin,
+        end,
+    });
 
-    interval_begin_end.or(interval).or(begin_end)
+    choice((interval_begin_end, interval, begin_end))
 }
 
 // returns today's date

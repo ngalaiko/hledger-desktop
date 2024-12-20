@@ -51,7 +51,7 @@ pub fn date<'a>(
                 chrono::NaiveDate::from_ymd_opt(year.unwrap_or(state.year), month, day).unwrap()
             })
     };
-    date('/').or(date('.')).or(date('-'))
+    choice((date('/'), date('.'), date('-')))
 }
 
 #[cfg(test)]

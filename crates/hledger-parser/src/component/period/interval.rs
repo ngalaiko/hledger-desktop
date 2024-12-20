@@ -39,7 +39,7 @@ pub fn interval<'a>() -> impl Parser<'a, &'a str, Interval, extra::Full<Rich<'a,
         just("yearly").to(Interval::NthQuarter(1)),
     ]);
 
-    word.or(every()).or(day_of_week())
+    choice((word, every(), day_of_week()))
 }
 
 fn day_of_week<'a>() -> impl Parser<'a, &'a str, Interval, extra::Full<Rich<'a, char>, State, ()>> {
@@ -129,15 +129,9 @@ fn day_of_week<'a>() -> impl Parser<'a, &'a str, Interval, extra::Full<Rich<'a, 
         .map(|()| Interval::Weekday(chrono::Weekday::Sun));
     just("every")
         .then(whitespace().repeated().at_least(1))
-        .ignore_then(
-            monday
-                .or(tuesday)
-                .or(wednesday)
-                .or(thursday)
-                .or(friday)
-                .or(saturday)
-                .or(sunday),
-        )
+        .ignore_then(choice((
+            monday, tuesday, wednesday, thursday, friday, saturday, sunday,
+        )))
 }
 
 fn every<'a>() -> impl Parser<'a, &'a str, Interval, extra::Full<Rich<'a, char>, State, ()>> {
@@ -180,12 +174,14 @@ fn every<'a>() -> impl Parser<'a, &'a str, Interval, extra::Full<Rich<'a, char>,
         .then_ignore(whitespace().repeated().at_least(1))
         .then_ignore(just("years"))
         .map(Interval::NthYear);
-    let every_n = every_n_days
-        .or(every_n_weeks)
-        .or(every_n_months)
-        .or(every_n_quarterd)
-        .or(every_n_years);
-    every.or(every_n)
+    choice((
+        every,
+        every_n_days,
+        every_n_weeks,
+        every_n_months,
+        every_n_quarterd,
+        every_n_years,
+    ))
 }
 
 #[cfg(test)]

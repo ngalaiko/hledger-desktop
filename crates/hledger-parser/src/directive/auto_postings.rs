@@ -3,14 +3,14 @@ use chumsky::prelude::*;
 use crate::component::account_name::{account_name, AccountName};
 use crate::component::amount::{amount, Amount};
 use crate::component::comment::inline;
-use crate::component::query::{query, Query};
+use crate::component::query::{query, Term};
 use crate::component::whitespace::whitespace;
 use crate::state::State;
 use crate::utils::end_of_line;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct AutosPostingRule {
-    pub query: Query,
+    pub query: Vec<Term>,
     pub postings: Vec<AutoPosting>,
 }
 
@@ -88,12 +88,10 @@ mod tests {
         assert_eq!(
             result,
             Ok(AutosPostingRule {
-                query: Query {
-                    terms: vec![Term {
-                        is_not: false,
-                        condition: Condition::Account(String::from("expenses:gifts")),
-                    }],
-                },
+                query: vec![Term {
+                    is_not: false,
+                    condition: Condition::Account(String::from("expenses:gifts")),
+                }],
                 postings: vec![
                     AutoPosting {
                         account_name: AccountName::from_parts(&[

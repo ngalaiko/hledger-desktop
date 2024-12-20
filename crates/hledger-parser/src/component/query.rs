@@ -9,22 +9,16 @@ use self::condition::condition;
 pub use self::condition::Condition;
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct Query {
-    pub terms: Vec<Term>,
-}
-
-#[derive(Clone, Debug, PartialEq)]
 pub struct Term {
     pub condition: Condition,
     pub is_not: bool,
 }
 
-pub fn query<'a>() -> impl Parser<'a, &'a str, Query, extra::Full<Rich<'a, char>, State, ()>> {
+pub fn query<'a>() -> impl Parser<'a, &'a str, Vec<Term>, extra::Full<Rich<'a, char>, State, ()>> {
     term()
         .separated_by(whitespace().repeated().at_least(1))
         .at_least(1)
         .collect::<Vec<_>>()
-        .map(|terms| Query { terms })
 }
 
 fn term<'a>() -> impl Parser<'a, &'a str, Term, extra::Full<Rich<'a, char>, State, ()>> {
@@ -49,12 +43,10 @@ mod tests {
             .into_result();
         assert_eq!(
             result,
-            Ok(Query {
-                terms: vec![Term {
-                    is_not: false,
-                    condition: Condition::Account(String::from("personal care")),
-                }]
-            })
+            Ok(vec![Term {
+                is_not: false,
+                condition: Condition::Account(String::from("personal care")),
+            }])
         );
     }
 
@@ -66,12 +58,10 @@ mod tests {
             .into_result();
         assert_eq!(
             result,
-            Ok(Query {
-                terms: vec![Term {
-                    is_not: false,
-                    condition: Condition::Account(String::from("expenses:dining")),
-                }]
-            })
+            Ok(vec![Term {
+                is_not: false,
+                condition: Condition::Account(String::from("expenses:dining")),
+            }])
         );
     }
 
@@ -80,12 +70,10 @@ mod tests {
         let result = query().then_ignore(end()).parse("dining").into_result();
         assert_eq!(
             result,
-            Ok(Query {
-                terms: vec![Term {
-                    is_not: false,
-                    condition: Condition::Account(String::from("dining")),
-                }]
-            })
+            Ok(vec![Term {
+                is_not: false,
+                condition: Condition::Account(String::from("dining")),
+            }])
         );
     }
 
@@ -97,18 +85,16 @@ mod tests {
             .into_result();
         assert_eq!(
             result,
-            Ok(Query {
-                terms: vec![
-                    Term {
-                        is_not: false,
-                        condition: Condition::Account(String::from("dining")),
-                    },
-                    Term {
-                        is_not: false,
-                        condition: Condition::Account(String::from("groceries")),
-                    }
-                ]
-            })
+            Ok(vec![
+                Term {
+                    is_not: false,
+                    condition: Condition::Account(String::from("dining")),
+                },
+                Term {
+                    is_not: false,
+                    condition: Condition::Account(String::from("groceries")),
+                }
+            ])
         );
     }
 
@@ -120,12 +106,10 @@ mod tests {
             .into_result();
         assert_eq!(
             result,
-            Ok(Query {
-                terms: vec![Term {
-                    is_not: true,
-                    condition: Condition::Account(String::from("opening closing")),
-                }]
-            })
+            Ok(vec![Term {
+                is_not: true,
+                condition: Condition::Account(String::from("opening closing")),
+            }])
         );
     }
 
@@ -137,12 +121,10 @@ mod tests {
             .into_result();
         assert_eq!(
             result,
-            Ok(Query {
-                terms: vec![Term {
-                    is_not: false,
-                    condition: Condition::Description(String::from("opening|closing")),
-                }]
-            })
+            Ok(vec![Term {
+                is_not: false,
+                condition: Condition::Description(String::from("opening|closing")),
+            }])
         );
     }
 
@@ -154,12 +136,10 @@ mod tests {
             .into_result();
         assert_eq!(
             result,
-            Ok(Query {
-                terms: vec![Term {
-                    is_not: true,
-                    condition: Condition::Description(String::from("opening|closing")),
-                }]
-            })
+            Ok(vec![Term {
+                is_not: true,
+                condition: Condition::Description(String::from("opening|closing")),
+            }])
         );
     }
 
@@ -171,26 +151,24 @@ mod tests {
             .into_result();
         assert_eq!(
             result,
-            Ok(Query {
-                terms: vec![
-                    Term {
-                        is_not: false,
-                        condition: Condition::Account(String::from("account")),
-                    },
-                    Term {
-                        is_not: false,
-                        condition: Condition::Account(String::from("testing account")),
-                    },
-                    Term {
-                        is_not: false,
-                        condition: Condition::Currency(String::from("\\$")),
-                    },
-                    Term {
-                        is_not: true,
-                        condition: Condition::Description(String::from("opening|closing")),
-                    }
-                ]
-            })
+            Ok(vec![
+                Term {
+                    is_not: false,
+                    condition: Condition::Account(String::from("account")),
+                },
+                Term {
+                    is_not: false,
+                    condition: Condition::Account(String::from("testing account")),
+                },
+                Term {
+                    is_not: false,
+                    condition: Condition::Currency(String::from("\\$")),
+                },
+                Term {
+                    is_not: true,
+                    condition: Condition::Description(String::from("opening|closing")),
+                }
+            ])
         );
     }
 }

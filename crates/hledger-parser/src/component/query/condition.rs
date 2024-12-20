@@ -16,7 +16,6 @@ pub enum Condition {
     Currency(String),
     Description(String),
     Payee(String),
-
     Amount(Amount),
     Date(Period),
     Status(Option<Status>),

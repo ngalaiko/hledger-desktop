@@ -19,7 +19,7 @@ pub use crate::component::amount::Amount;
 pub use crate::component::period::interval::Interval;
 pub use crate::component::period::Period;
 pub use crate::component::price::AmountPrice;
-pub use crate::component::query::{Condition, Query, Term};
+pub use crate::component::query::{Condition, Term};
 pub use crate::component::status::Status;
 pub use crate::directive::{
     Account, Assertion, AutoPosting, AutosPostingRule, Commodity, DecimalMark, Directive, Format,
@@ -33,7 +33,7 @@ use crate::component::query::query;
 /// # Errors
 ///
 /// Will return a list of parsing errors if input is not a query.
-pub fn parse_query<I: AsRef<str>>(contents: I) -> Result<Query, Vec<ParseError>> {
+pub fn parse_query<I: AsRef<str>>(contents: I) -> Result<Vec<Term>, Vec<ParseError>> {
     query()
         .then_ignore(end())
         .parse_with_state(contents.as_ref(), &mut State::default())

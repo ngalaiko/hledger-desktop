@@ -3,12 +3,14 @@ members = [
     "crates/hledger-desktop",
     "crates/hledger-journal",
     "crates/hledger-parser",
+    "crates/hledger-query",
 ]
 resolver = "2"
 
 [workspace.dependencies]
 hledger-journal = { path = "crates/hledger-journal" }
 hledger-parser = { path = "crates/hledger-parser" }
+hledger-query = { path = "crates/hledger-query" }
 
 [workspace.lints.rust]
 unsafe_code = "forbid"

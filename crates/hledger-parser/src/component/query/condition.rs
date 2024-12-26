@@ -15,6 +15,7 @@ pub enum Condition {
     Code(String),
     Currency(String),
     Description(String),
+    Note(String),
     Payee(String),
     Amount(Amount),
     Date(Period),
@@ -56,6 +57,9 @@ pub fn condition<'a>() -> impl Parser<'a, &'a str, Condition, extra::Full<Rich<'
     let status = just("status:")
         .ignore_then(status().or_not())
         .map(Condition::Status);
+    let note = just("note:")
+        .ignore_then(string_value())
+        .map(Condition::Note);
     let amount = amount_condition().map(Condition::Amount);
     let date = just("date:").ignore_then(period()).map(Condition::Date);
 
@@ -68,6 +72,7 @@ pub fn condition<'a>() -> impl Parser<'a, &'a str, Condition, extra::Full<Rich<'
         description,
         payee,
         account_prefixed,
+        note,
         string_value().map(Condition::Account),
     ))
 }

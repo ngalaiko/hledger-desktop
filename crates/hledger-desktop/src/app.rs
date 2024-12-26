@@ -41,7 +41,7 @@ impl eframe::App for App {
         let previous_time_frame = frame.info().cpu_usage;
         self.state.frames.on_new_frame(now, previous_time_frame);
 
-        window::render(ctx, &self.executor, &mut self.state);
+        window::render(ctx, self.executor.clone(), &mut self.state);
     }
 
     fn save(&mut self, storage: &mut dyn eframe::Storage) {

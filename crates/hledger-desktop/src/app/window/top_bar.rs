@@ -1,10 +1,12 @@
+use std::sync::Arc;
+
 use eframe::egui::{menu, vec2, Align, Button, Layout, Sense, Ui};
 use smol_macros::Executor;
 
 use crate::app::State;
 use crate::theme::Theme;
 
-pub fn ui(ui: &mut Ui, executor: &Executor<'static>, state: &mut State) {
+pub fn ui(ui: &mut Ui, executor: Arc<Executor<'static>>, state: &mut State) {
     menu::bar(ui, |ui| {
         if cfg!(target_os = "macos") {
             macos_traffic_lights_box_ui(ui);

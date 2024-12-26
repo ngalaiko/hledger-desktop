@@ -16,7 +16,7 @@ pub fn load_state(
         theme: value.theme,
         file: value
             .file
-            .map(|persistent| file::File::new(&executor, persistent.file_path)),
+            .map(|persistent| file::File::new(executor, persistent.file_path)),
         ..app::State::default()
     })
 }

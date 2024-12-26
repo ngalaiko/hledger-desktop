@@ -30,7 +30,6 @@ impl Query {
     #[allow(clippy::missing_errors_doc)]
     pub fn parse(query: &str) -> Result<Query, Error> {
         let terms = hledger_parser::parse_query(query).map_err(Error::Parse)?;
-        dbg!(&terms);
         let transaction_filters = terms
             .iter()
             .map(to_transaction_filter)

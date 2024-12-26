@@ -2,6 +2,8 @@ mod bottom_bar;
 pub mod file;
 mod top_bar;
 
+use std::sync::Arc;
+
 use eframe::egui::{CentralPanel, Context, TopBottomPanel, Ui};
 use smol_macros::Executor;
 
@@ -22,7 +24,7 @@ pub struct State {
 impl State {
     pub fn open_file<P: AsRef<std::path::Path>>(
         &mut self,
-        executor: &Executor<'static>,
+        executor: Arc<Executor<'static>>,
         file_path: P,
     ) {
         self.file = Some(file::File::new(executor, file_path));
@@ -44,13 +46,13 @@ impl State {
     }
 }
 
-pub fn render(ctx: &Context, executor: &Executor<'static>, state: &mut State) {
-    TopBottomPanel::top("top_bar").show(ctx, |ui| top_bar::ui(ui, executor, state));
+pub fn render(ctx: &Context, executor: Arc<Executor<'static>>, state: &mut State) {
+    TopBottomPanel::top("top_bar").show(ctx, |ui| top_bar::ui(ui, executor.clone(), state));
     TopBottomPanel::bottom("botttom_bar").show(ctx, |ui| bottom_bar::ui(ui, state));
     CentralPanel::default().show(ctx, |ui| central_pane_ui(ui, executor, state));
 }
 
-fn central_pane_ui(ui: &mut Ui, executor: &Executor<'static>, state: &mut State) {
+fn central_pane_ui(ui: &mut Ui, executor: Arc<Executor<'static>>, state: &mut State) {
     if let Some(file) = &mut state.file {
         file::ui(ui, file);
     } else {
@@ -58,12 +60,12 @@ fn central_pane_ui(ui: &mut Ui, executor: &Executor<'static>, state: &mut State)
     }
 }
 
-fn welcome_screen_ui(ui: &mut Ui, executor: &Executor<'static>, state: &mut State) {
+fn welcome_screen_ui(ui: &mut Ui, executor: Arc<Executor<'static>>, state: &mut State) {
     ui.vertical_centered(|ui| {
         ui.heading("Welcome to hledger-desktop");
         if ui.button("Open a new file...").clicked() {
             if let Some(file_path) = rfd::FileDialog::new().pick_file() {
-                state.open_file(executor, file_path);
+                state.open_file(executor.clone(), file_path);
             }
         }
 

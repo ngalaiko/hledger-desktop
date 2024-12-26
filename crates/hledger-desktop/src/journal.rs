@@ -8,7 +8,32 @@ use futures::future::{self, join3};
 use notify_debouncer_mini::new_debouncer;
 use smol_macros::Executor;
 
+#[derive(Clone)]
 pub struct Watcher {
+    inner: Arc<InnerWatcher>,
+}
+
+impl Watcher {
+    #[allow(clippy::missing_errors_doc)]
+    #[allow(clippy::missing_panics_doc)]
+    pub fn watch<P: AsRef<std::path::Path>>(executor: &Executor<'static>, path: P) -> Self {
+        Self {
+            inner: InnerWatcher::watch(executor, path).into(),
+        }
+    }
+
+    #[must_use]
+    pub fn journal(&self) -> MutexGuardArc<Option<hledger_journal::Journal>> {
+        self.inner.journal()
+    }
+
+    #[must_use]
+    pub fn error(&self) -> MutexGuardArc<HashMap<std::path::PathBuf, hledger_journal::Error>> {
+        self.inner.error()
+    }
+}
+
+struct InnerWatcher {
     _task: future::Join3<Task<()>, Task<()>, Task<()>>,
 
     journal: Arc<Mutex<Option<hledger_journal::Journal>>>,
@@ -20,7 +45,7 @@ enum WatcherTask {
     Unwatch(Vec<std::path::PathBuf>),
 }
 
-impl Watcher {
+impl InnerWatcher {
     #[allow(clippy::missing_errors_doc)]
     #[allow(clippy::missing_panics_doc)]
     #[allow(clippy::too_many_lines)]

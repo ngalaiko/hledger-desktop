@@ -1,57 +1,20 @@
-#![allow(dead_code)]
-
-pub mod interval;
-
 use std::time::SystemTime;
 
 use chrono::Datelike;
 use chumsky::prelude::*;
 
 use crate::component::date::smart::date;
-use crate::component::period::interval::{interval, Interval};
 use crate::component::whitespace::whitespace;
 use crate::state::State;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Period {
-    pub interval: Option<Interval>,
     pub begin: Option<chrono::NaiveDate>,
     pub end: Option<chrono::NaiveDate>,
 }
 
 pub fn period<'a>() -> impl Parser<'a, &'a str, Period, extra::Full<Rich<'a, char>, State, ()>> {
-    let interval_begin_end = interval()
-        .then_ignore(
-            whitespace()
-                .repeated()
-                .at_least(1)
-                .ignore_then(just("in"))
-                .ignore_then(whitespace().repeated().at_least(1))
-                .or(whitespace().repeated().at_least(1)),
-        )
-        .then(
-            quarter()
-                .or(year_quarter())
-                .or(begin_end())
-                .or(just_end())
-                .or(begin())
-                .or(year_month_day())
-                .or(year_month())
-                .or(year()),
-        )
-        .map(|(interval, (begin, end))| Period {
-            interval: Some(interval),
-            begin,
-            end,
-        });
-
-    let interval = interval().map(|interval| Period {
-        interval: Some(interval),
-        begin: None,
-        end: None,
-    });
-
-    let begin_end = choice((
+    choice((
         quarter(),
         year_quarter(),
         begin_end(),
@@ -61,13 +24,7 @@ pub fn period<'a>() -> impl Parser<'a, &'a str, Period, extra::Full<Rich<'a, cha
         year_month(),
         year(),
     ))
-    .map(|(begin, end)| Period {
-        interval: None,
-        begin,
-        end,
-    });
-
-    choice((interval_begin_end, interval, begin_end))
+    .map(|(begin, end)| Period { begin, end })
 }
 
 // returns today's date
@@ -293,7 +250,6 @@ mod tests {
         assert_eq!(
             result,
             Ok(Period {
-                interval: None,
                 begin: Some(chrono::NaiveDate::from_ymd_opt(2009, 1, 1).unwrap()),
                 end: Some(chrono::NaiveDate::from_ymd_opt(2009, 4, 1).unwrap()),
             })
@@ -309,7 +265,6 @@ mod tests {
         assert_eq!(
             result,
             Ok(Period {
-                interval: None,
                 begin: Some(chrono::NaiveDate::from_ymd_opt(2009, 1, 1).unwrap()),
                 end: Some(chrono::NaiveDate::from_ymd_opt(2009, 4, 1).unwrap()),
             })
@@ -325,7 +280,6 @@ mod tests {
         assert_eq!(
             result,
             Ok(Period {
-                interval: None,
                 begin: Some(chrono::NaiveDate::from_ymd_opt(2009, 1, 1).unwrap()),
                 end: None,
             })
@@ -338,7 +292,6 @@ mod tests {
         assert_eq!(
             result,
             Ok(Period {
-                interval: None,
                 begin: None,
                 end: Some(chrono::NaiveDate::from_ymd_opt(2009, 1, 1).unwrap()),
             })
@@ -351,7 +304,6 @@ mod tests {
         assert_eq!(
             result,
             Ok(Period {
-                interval: None,
                 begin: Some(chrono::NaiveDate::from_ymd_opt(2009, 1, 1).unwrap()),
                 end: Some(chrono::NaiveDate::from_ymd_opt(2010, 1, 1).unwrap()),
             })
@@ -364,7 +316,6 @@ mod tests {
         assert_eq!(
             result,
             Ok(Period {
-                interval: None,
                 begin: Some(chrono::NaiveDate::from_ymd_opt(2009, 1, 1).unwrap()),
                 end: Some(chrono::NaiveDate::from_ymd_opt(2009, 2, 1).unwrap()),
             })
@@ -377,7 +328,6 @@ mod tests {
         assert_eq!(
             result,
             Ok(Period {
-                interval: None,
                 begin: Some(chrono::NaiveDate::from_ymd_opt(2009, 1, 1).unwrap()),
                 end: Some(chrono::NaiveDate::from_ymd_opt(2009, 1, 2).unwrap()),
             })
@@ -390,7 +340,6 @@ mod tests {
         assert_eq!(
             result,
             Ok(Period {
-                interval: None,
                 begin: today().with_month(7).unwrap().with_day(1),
                 end: today().with_month(10).unwrap().with_day(1),
             })
@@ -403,54 +352,8 @@ mod tests {
         assert_eq!(
             result,
             Ok(Period {
-                interval: None,
                 begin: chrono::NaiveDate::from_ymd_opt(2009, 7, 1),
                 end: chrono::NaiveDate::from_ymd_opt(2009, 10, 1),
-            })
-        );
-    }
-
-    #[test]
-    fn with_in_interval() {
-        let result = period()
-            .then_ignore(end())
-            .parse("every 2 weeks in 2008")
-            .into_result();
-        assert_eq!(
-            result,
-            Ok(Period {
-                interval: Some(Interval::NthWeek(2)),
-                begin: chrono::NaiveDate::from_ymd_opt(2008, 1, 1),
-                end: chrono::NaiveDate::from_ymd_opt(2009, 1, 1),
-            })
-        );
-    }
-
-    #[test]
-    fn with_interval() {
-        let result = period()
-            .then_ignore(end())
-            .parse("weekly from 2009/1/1 to 2009/4/1")
-            .into_result();
-        assert_eq!(
-            result,
-            Ok(Period {
-                interval: Some(Interval::NthWeek(1)),
-                begin: chrono::NaiveDate::from_ymd_opt(2009, 1, 1),
-                end: chrono::NaiveDate::from_ymd_opt(2009, 4, 1),
-            })
-        );
-    }
-
-    #[test]
-    fn just_interval() {
-        let result = period().then_ignore(end()).parse("monthly").into_result();
-        assert_eq!(
-            result,
-            Ok(Period {
-                interval: Some(Interval::NthMonth(1)),
-                begin: None,
-                end: None,
             })
         );
     }

@@ -1,5 +1,6 @@
 use chumsky::prelude::*;
 
+use crate::component::interval::{interval, Interval};
 use crate::component::period::{period, Period};
 use crate::component::status::Status;
 use crate::component::whitespace::whitespace;
@@ -9,7 +10,8 @@ use crate::state::State;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Transaction {
-    pub period: Period,
+    pub interval: Interval,
+    pub period: Option<Period>,
     pub status: Option<Status>,
     pub code: Option<String>,
     pub payee: String,
@@ -19,9 +21,20 @@ pub struct Transaction {
 
 pub fn transaction<'a>(
 ) -> impl Parser<'a, &'a str, Transaction, extra::Full<Rich<'a, char>, State, ()>> {
+    let period = whitespace()
+        .repeated()
+        .at_least(1)
+        .ignore_then(
+            just("in")
+                .ignore_then(whitespace().repeated().at_least(1))
+                .or_not(),
+        )
+        .ignore_then(period());
+
     let header = just("~")
         .ignore_then(whitespace().repeated())
-        .ignore_then(period())
+        .ignore_then(interval())
+        .then(period.or_not())
         .then_ignore(whitespace().repeated().at_least(2))
         .then(header().or_not());
 
@@ -32,8 +45,9 @@ pub fn transaction<'a>(
                 .allow_leading()
                 .collect::<Vec<_>>(),
         )
-        .map(|((period, header), postings)| Transaction {
+        .map(|(((interval, period), header), postings)| Transaction {
             period,
+            interval,
             status: header.as_ref().and_then(|h| h.status.clone()),
             code: header.as_ref().and_then(|h| h.code.clone()),
             payee: header.as_ref().map_or(String::new(), |h| h.payee.clone()),
@@ -46,7 +60,7 @@ pub fn transaction<'a>(
 mod tests {
     use rust_decimal::Decimal;
 
-    use crate::component::{account_name::AccountName, amount::Amount, period::interval::Interval};
+    use crate::component::{account_name::AccountName, amount::Amount};
 
     use super::*;
 
@@ -63,11 +77,11 @@ mod tests {
         assert_eq!(
             result,
             Ok(Transaction {
-                period: Period {
-                    interval: Some(Interval::NthMonth(1)),
+                interval: Interval::NthMonth(1),
+                period: Some(Period {
                     begin: chrono::NaiveDate::from_ymd_opt(2023, 4, 15),
                     end: chrono::NaiveDate::from_ymd_opt(2023, 6, 16),
-                },
+                }),
                 code: None,
                 status: None,
                 payee: String::from("electricity"),
@@ -117,11 +131,8 @@ mod tests {
         assert_eq!(
             result,
             Ok(Transaction {
-                period: Period {
-                    interval: Some(Interval::NthMonth(1)),
-                    begin: None,
-                    end: None,
-                },
+                interval: Interval::NthMonth(1),
+                period: None,
                 code: None,
                 status: None,
                 payee: String::from("set budget goals"),

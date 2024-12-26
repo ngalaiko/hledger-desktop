@@ -15,7 +15,7 @@ use crate::directive::directives;
 use crate::state::State;
 
 pub use crate::component::amount::Amount;
-pub use crate::component::period::interval::Interval;
+pub use crate::component::interval::Interval;
 pub use crate::component::period::Period;
 pub use crate::component::price::AmountPrice;
 pub use crate::component::query::{Condition, Term};

@@ -227,7 +227,6 @@ mod tests {
         assert_eq!(
             result,
             Ok(Condition::Date(Period {
-                interval: None,
                 begin: chrono::NaiveDate::from_ymd_opt(2016, 1, 1),
                 end: chrono::NaiveDate::from_ymd_opt(2017, 1, 1),
             }))

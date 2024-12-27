@@ -10,7 +10,7 @@ use crate::state::State;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Transaction {
-    pub interval: Interval,
+    pub interval: Option<Interval>,
     pub period: Option<Period>,
     pub status: Option<Status>,
     pub code: Option<String>,
@@ -21,20 +21,23 @@ pub struct Transaction {
 
 pub fn transaction<'a>(
 ) -> impl Parser<'a, &'a str, Transaction, extra::Full<Rich<'a, char>, State, ()>> {
-    let period = whitespace()
-        .repeated()
-        .at_least(1)
-        .ignore_then(
-            just("in")
-                .ignore_then(whitespace().repeated().at_least(1))
-                .or_not(),
-        )
-        .ignore_then(period());
+    let interval_period = choice((
+        interval()
+            .then_ignore(whitespace().repeated().at_least(1))
+            .then_ignore(
+                just("in")
+                    .ignore_then(whitespace().repeated().at_least(1))
+                    .or_not(),
+            )
+            .then(period())
+            .map(|(interval, period)| (Some(interval), Some(period))),
+        interval().map(|interval| (Some(interval), None::<Period>)),
+        period().map(|period| (None::<Interval>, Some(period))),
+    ));
 
     let header = just("~")
         .ignore_then(whitespace().repeated())
-        .ignore_then(interval())
-        .then(period.or_not())
+        .ignore_then(interval_period)
         .then_ignore(whitespace().repeated().at_least(2))
         .then(header().or_not());
 
@@ -65,7 +68,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn simple() {
+    fn interval_and_period() {
         let result = transaction()
             .then_ignore(end())
             .parse(
@@ -77,7 +80,112 @@ mod tests {
         assert_eq!(
             result,
             Ok(Transaction {
-                interval: Interval::NthMonth(1),
+                interval: Some(Interval::NthMonth(1)),
+                period: Some(Period {
+                    begin: chrono::NaiveDate::from_ymd_opt(2023, 4, 15),
+                    end: chrono::NaiveDate::from_ymd_opt(2023, 6, 16),
+                }),
+                code: None,
+                status: None,
+                payee: String::from("electricity"),
+                note: None,
+                postings: vec![
+                    Posting {
+                        status: None,
+                        account_name: AccountName::from_parts(&[
+                            String::from("expenses"),
+                            String::from("utilities")
+                        ]),
+                        amount: Some(Amount {
+                            quantity: Decimal::new(400, 0),
+                            commodity: String::from("$"),
+                        }),
+                        price: None,
+                        assertion: None,
+                        is_virtual: false,
+                    },
+                    Posting {
+                        status: None,
+                        account_name: AccountName::from_parts(&[
+                            String::from("assets"),
+                            String::from("bank"),
+                            String::from("checking")
+                        ]),
+                        amount: None,
+                        price: None,
+                        assertion: None,
+                        is_virtual: false,
+                    }
+                ],
+            })
+        );
+    }
+
+    #[test]
+    fn just_interval() {
+        let result = transaction()
+            .then_ignore(end())
+            .parse(
+                "~ monthly  electricity
+    expenses:utilities          $400
+    assets:bank:checking",
+            )
+            .into_result();
+        assert_eq!(
+            result,
+            Ok(Transaction {
+                interval: Some(Interval::NthMonth(1)),
+                period: None,
+                code: None,
+                status: None,
+                payee: String::from("electricity"),
+                note: None,
+                postings: vec![
+                    Posting {
+                        status: None,
+                        account_name: AccountName::from_parts(&[
+                            String::from("expenses"),
+                            String::from("utilities")
+                        ]),
+                        amount: Some(Amount {
+                            quantity: Decimal::new(400, 0),
+                            commodity: String::from("$"),
+                        }),
+                        price: None,
+                        assertion: None,
+                        is_virtual: false,
+                    },
+                    Posting {
+                        status: None,
+                        account_name: AccountName::from_parts(&[
+                            String::from("assets"),
+                            String::from("bank"),
+                            String::from("checking")
+                        ]),
+                        amount: None,
+                        price: None,
+                        assertion: None,
+                        is_virtual: false,
+                    }
+                ],
+            })
+        );
+    }
+
+    #[test]
+    fn only_period() {
+        let result = transaction()
+            .then_ignore(end())
+            .parse(
+                "~ from 2023-04-15 to 2023-06-16  electricity
+    expenses:utilities          $400
+    assets:bank:checking",
+            )
+            .into_result();
+        assert_eq!(
+            result,
+            Ok(Transaction {
+                interval: None,
                 period: Some(Period {
                     begin: chrono::NaiveDate::from_ymd_opt(2023, 4, 15),
                     end: chrono::NaiveDate::from_ymd_opt(2023, 6, 16),
@@ -131,7 +239,7 @@ mod tests {
         assert_eq!(
             result,
             Ok(Transaction {
-                interval: Interval::NthMonth(1),
+                interval: Some(Interval::NthMonth(1)),
                 period: None,
                 code: None,
                 status: None,

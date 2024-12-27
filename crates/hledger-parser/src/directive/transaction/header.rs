@@ -10,7 +10,7 @@ pub struct Header {
     pub status: Option<Status>,
     pub code: Option<String>,
     pub payee: String,
-    pub description: Option<String>,
+    pub note: Option<String>,
 }
 
 pub fn header<'a>() -> impl Parser<'a, &'a str, Header, extra::Full<Rich<'a, char>, State, ()>> {
@@ -24,12 +24,12 @@ pub fn header<'a>() -> impl Parser<'a, &'a str, Header, extra::Full<Rich<'a, cha
 
     let payee = any()
         .and_is(text::newline().not())
-        .and_is(just("|").not()) // forbidden, because it is a description separator
+        .and_is(just("|").not()) // forbidden, because it is a note separator
         .and_is(just(";").not()) // forbidden, because it indicates comment
         .repeated()
         .collect::<String>();
 
-    let description = just("|").ignore_then(whitespace().repeated()).ignore_then(
+    let note = just("|").ignore_then(whitespace().repeated()).ignore_then(
         any()
             .and_is(text::newline().not())
             .and_is(just(";").not()) // forbidden, because it indicates comment
@@ -41,12 +41,12 @@ pub fn header<'a>() -> impl Parser<'a, &'a str, Header, extra::Full<Rich<'a, cha
         .or_not()
         .then(whitespace().repeated().ignore_then(code).or_not())
         .then(whitespace().repeated().ignore_then(payee))
-        .then(whitespace().repeated().ignore_then(description).or_not())
+        .then(whitespace().repeated().ignore_then(note).or_not())
         .then_ignore(end_of_line())
-        .map(|(((status, code), payee), description)| Header {
+        .map(|(((status, code), payee), note)| Header {
             status,
             code,
             payee: payee.trim().to_string(),
-            description,
+            note,
         })
 }

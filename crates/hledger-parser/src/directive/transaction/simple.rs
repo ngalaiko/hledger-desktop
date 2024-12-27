@@ -13,7 +13,7 @@ pub struct Transaction {
     pub status: Option<Status>,
     pub code: Option<String>,
     pub payee: String,
-    pub description: Option<String>,
+    pub note: Option<String>,
     pub postings: Vec<Posting>,
     pub position: std::ops::Range<usize>,
 }
@@ -36,7 +36,7 @@ pub fn transaction<'a>(
             status: header.as_ref().and_then(|h| h.status.clone()),
             code: header.as_ref().and_then(|h| h.code.clone()),
             payee: header.as_ref().map_or(String::new(), |h| h.payee.clone()),
-            description: header.as_ref().and_then(|h| h.description.clone()),
+            note: header.as_ref().and_then(|h| h.note.clone()),
             postings,
             position: e.span().into_range(),
         })
@@ -69,7 +69,7 @@ mod tests {
                 code: Some(String::from("123")),
                 status: Some(Status::Cleared),
                 payee: String::from("salary"),
-                description: Some(String::from("january ")),
+                note: Some(String::from("january ")),
                 postings: vec![
                     Posting {
                         status: None,
@@ -120,7 +120,7 @@ mod tests {
                 code: None,
                 status: None,
                 payee: String::from("salary"),
-                description: None,
+                note: None,
                 postings: vec![
                     Posting {
                         status: None,
@@ -167,7 +167,7 @@ mod tests {
                 code: None,
                 status: None,
                 payee: String::new(),
-                description: None,
+                note: None,
                 postings: vec![],
                 position: (0..8),
             })

@@ -76,8 +76,8 @@ fn to_transaction_filter(term: &hledger_parser::Term) -> Result<TransactionFilte
                 .build()
                 .map_err(Error::Regex)?;
             Ok(Box::new(move |tx| {
-                let is_match = if let Some(description) = &tx.description {
-                    r.is_match(&format!("{} | {description}", tx.payee))
+                let is_match = if let Some(note) = &tx.note {
+                    r.is_match(&format!("{} | {note}", tx.payee))
                 } else {
                     r.is_match(&tx.payee)
                 };

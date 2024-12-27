@@ -149,9 +149,9 @@ fn transaction_ui(ui: &mut Ui, transaction: &hledger_journal::Transaction) {
                             RichText::new(transaction.date.format("%Y-%m-%d").to_string())
                                 .monospace(),
                         );
-                        if let Some(description) = &transaction.description {
+                        if let Some(note) = &transaction.note {
                             ui.label(
-                                RichText::new(format!("{} | {description}", transaction.payee))
+                                RichText::new(format!("{} | {note}", transaction.payee))
                                     .monospace(),
                             )
                         } else {

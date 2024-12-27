@@ -15,7 +15,7 @@ pub struct Transaction {
     pub status: Option<Status>,
     pub code: Option<String>,
     pub payee: String,
-    pub description: Option<String>,
+    pub note: Option<String>,
     pub postings: Vec<Posting>,
 }
 
@@ -51,7 +51,7 @@ pub fn transaction<'a>(
             status: header.as_ref().and_then(|h| h.status.clone()),
             code: header.as_ref().and_then(|h| h.code.clone()),
             payee: header.as_ref().map_or(String::new(), |h| h.payee.clone()),
-            description: header.as_ref().and_then(|h| h.description.clone()),
+            note: header.as_ref().and_then(|h| h.note.clone()),
             postings,
         })
 }
@@ -85,7 +85,7 @@ mod tests {
                 code: None,
                 status: None,
                 payee: String::from("electricity"),
-                description: None,
+                note: None,
                 postings: vec![
                     Posting {
                         status: None,
@@ -136,7 +136,7 @@ mod tests {
                 code: None,
                 status: None,
                 payee: String::from("set budget goals"),
-                description: None,
+                note: None,
                 postings: vec![
                     Posting {
                         status: None,

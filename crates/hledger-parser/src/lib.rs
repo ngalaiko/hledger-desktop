@@ -18,7 +18,7 @@ pub use crate::component::amount::Amount;
 pub use crate::component::interval::Interval;
 pub use crate::component::period::Period;
 pub use crate::component::price::AmountPrice;
-pub use crate::component::query::{Condition, Term};
+pub use crate::component::query::{Amount as AmountCondition, Condition, Sign as AmountSign, Term};
 pub use crate::component::status::Status;
 pub use crate::directive::{
     Account, Assertion, AutoPosting, AutosPostingRule, Commodity, DecimalMark, Directive, Format,

@@ -6,7 +6,7 @@ use crate::component::whitespace::whitespace;
 use crate::state::State;
 
 use self::condition::condition;
-pub use self::condition::Condition;
+pub use self::condition::{Amount, Condition, Sign};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Term {

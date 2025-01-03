@@ -1,17 +1,11 @@
 pub use hledger_parser::{ParseError, Posting, Transaction};
 
+#[derive(Default)]
 pub struct Query {
-    transaction_filter: transaction::Filter,
-    posting_filter: posting::Filter,
-}
-
-impl Default for Query {
-    fn default() -> Self {
-        Self {
-            transaction_filter: Box::new(|_| true),
-            posting_filter: Box::new(|_| true),
-        }
-    }
+    description_filters: Vec<Filter>,
+    account_filters: Vec<Filter>,
+    status_filters: Vec<Filter>,
+    other_filters: Vec<Filter>,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -26,32 +20,59 @@ impl Query {
     #[allow(clippy::missing_errors_doc)]
     pub fn parse(query: &str) -> Result<Query, Error> {
         let terms = hledger_parser::parse_query(query).map_err(Error::Parse)?;
-        let transaction_filters = terms
+        let description_filters = terms
             .iter()
-            .map(to_transaction_filter)
+            .filter(|term| matches!(term.condition, hledger_parser::Condition::Description(_)))
+            .map(to_filter)
             .collect::<Result<Vec<_>, _>>()?;
-        let posting_filters = terms
+        let account_filters = terms
             .iter()
-            .map(to_posting_filter)
+            .filter(|term| matches!(term.condition, hledger_parser::Condition::Account(_)))
+            .map(to_filter)
+            .collect::<Result<Vec<_>, _>>()?;
+        let status_filters = terms
+            .iter()
+            .filter(|term| matches!(term.condition, hledger_parser::Condition::Status(_)))
+            .map(to_filter)
+            .collect::<Result<Vec<_>, _>>()?;
+        let other_filters = terms
+            .iter()
+            .filter(|term| {
+                !matches!(
+                    term.condition,
+                    hledger_parser::Condition::Description(_)
+                        | hledger_parser::Condition::Account(_)
+                        | hledger_parser::Condition::Status(_)
+                )
+            })
+            .map(to_filter)
             .collect::<Result<Vec<_>, _>>()?;
         Ok(Self {
-            transaction_filter: Box::new(move |tx| transaction_filters.iter().all(|f| f(tx))),
-            posting_filter: Box::new(move |posting| posting_filters.iter().all(|f| f(posting))),
+            description_filters,
+            account_filters,
+            status_filters,
+            other_filters,
         })
     }
 
+    /// When given multiple query terms, this will match:
+    ///   * any of the description terms AND
+    ///   * any of the account terms AND
+    ///   * any of the status terms AND
+    ///   * all the other terms.
     #[must_use]
     pub fn filter(&self, tx: &Transaction) -> Option<Transaction> {
-        if !(self.transaction_filter)(tx) {
+        if !self.filter_transaction(tx) {
             return None;
         }
 
         let postings = tx
             .postings
             .iter()
-            .filter(|posting| (self.posting_filter)(posting))
+            .filter(|posting| self.filter_posting(posting))
             .cloned()
             .collect::<Vec<_>>();
+
         if postings.is_empty() {
             return None;
         }
@@ -61,43 +82,82 @@ impl Query {
             ..tx.clone()
         })
     }
-}
 
-fn to_transaction_filter(term: &hledger_parser::Term) -> Result<transaction::Filter, Error> {
-    let filter = match &term.condition {
-        hledger_parser::Condition::Account(_)
-        | hledger_parser::Condition::Currency(_)
-        | hledger_parser::Condition::Amount(_) => Ok(transaction::always_true_filter()),
-        hledger_parser::Condition::Code(query) => transaction::code_filter(query),
-        hledger_parser::Condition::Description(query) => transaction::description_filter(query),
-        hledger_parser::Condition::Note(query) => transaction::note_filter(query),
-        hledger_parser::Condition::Payee(query) => transaction::payee_filter(query),
-        hledger_parser::Condition::Date(period) => Ok(transaction::date_filter(period)),
-        hledger_parser::Condition::Status(status) => {
-            Ok(transaction::status_filter(status.as_ref()))
-        }
-    }?;
-    if term.is_not {
-        Ok(transaction::not_filter(filter))
-    } else {
-        Ok(filter)
+    fn filter_posting(&self, posting: &Posting) -> bool {
+        (self.account_filters.is_empty()
+            || self
+                .account_filters
+                .iter()
+                .any(|f| f.filter_posting(posting)))
+            && (self.other_filters.is_empty()
+                || self.other_filters.iter().all(|f| f.filter_posting(posting)))
+    }
+
+    fn filter_transaction(&self, tx: &Transaction) -> bool {
+        (self.description_filters.is_empty()
+            || self
+                .description_filters
+                .iter()
+                .any(|f| f.filter_transaction(tx)))
+            && (self.status_filters.is_empty()
+                || self.status_filters.iter().any(|f| f.filter_transaction(tx)))
+            && (self.other_filters.is_empty()
+                || self.other_filters.iter().all(|f| f.filter_transaction(tx)))
     }
 }
 
-fn to_posting_filter(term: &hledger_parser::Term) -> Result<posting::Filter, Error> {
+enum Filter {
+    Transaction(transaction::Filter),
+    Posting(posting::Filter),
+}
+
+impl Filter {
+    pub fn filter_transaction(&self, tx: &Transaction) -> bool {
+        match self {
+            Self::Posting(_) => true,
+            Self::Transaction(filter) => filter(tx),
+        }
+    }
+
+    pub fn filter_posting(&self, posting: &Posting) -> bool {
+        match self {
+            Self::Posting(filter) => filter(posting),
+            Self::Transaction(_) => true,
+        }
+    }
+}
+
+fn to_filter(term: &hledger_parser::Term) -> Result<Filter, Error> {
     let filter = match &term.condition {
-        hledger_parser::Condition::Account(query) => posting::account_filter(query),
-        hledger_parser::Condition::Code(_)
-        | hledger_parser::Condition::Description(_)
-        | hledger_parser::Condition::Note(_)
-        | hledger_parser::Condition::Payee(_)
-        | hledger_parser::Condition::Date(_)
-        | hledger_parser::Condition::Status(_) => Ok(posting::always_true_filter()),
-        hledger_parser::Condition::Currency(query) => posting::currency(query),
-        hledger_parser::Condition::Amount(filter) => Ok(posting::amount(filter)),
+        hledger_parser::Condition::Account(query) => {
+            posting::account_filter(query).map(Filter::Posting)
+        }
+        hledger_parser::Condition::Currency(query) => posting::currency(query).map(Filter::Posting),
+        hledger_parser::Condition::Amount(filter) => Ok(Filter::Posting(posting::amount(filter))),
+        hledger_parser::Condition::Code(query) => {
+            transaction::code_filter(query).map(Filter::Transaction)
+        }
+        hledger_parser::Condition::Description(query) => {
+            transaction::description_filter(query).map(Filter::Transaction)
+        }
+        hledger_parser::Condition::Note(query) => {
+            transaction::note_filter(query).map(Filter::Transaction)
+        }
+        hledger_parser::Condition::Payee(query) => {
+            transaction::payee_filter(query).map(Filter::Transaction)
+        }
+        hledger_parser::Condition::Date(period) => {
+            Ok(Filter::Transaction(transaction::date_filter(period)))
+        }
+        hledger_parser::Condition::Status(status) => Ok(Filter::Transaction(
+            transaction::status_filter(status.as_ref()),
+        )),
     }?;
     if term.is_not {
-        Ok(posting::not_filter(filter))
+        match filter {
+            Filter::Transaction(filter) => Ok(Filter::Transaction(transaction::not_filter(filter))),
+            Filter::Posting(filter) => Ok(Filter::Posting(posting::not_filter(filter))),
+        }
     } else {
         Ok(filter)
     }
@@ -206,10 +266,6 @@ mod posting {
     pub fn not_filter(filter: Filter) -> Filter {
         Box::new(move |tx| !filter(tx))
     }
-
-    pub fn always_true_filter() -> Filter {
-        Box::new(|_| true)
-    }
 }
 
 mod transaction {
@@ -276,10 +332,6 @@ mod transaction {
         Ok(Box::new(move |tx| {
             tx.note.as_ref().map_or(true, |note| r.is_match(note))
         }))
-    }
-
-    pub fn always_true_filter() -> Filter {
-        Box::new(|_| true)
     }
 
     pub fn code_filter(query: &str) -> Result<Filter, Error> {

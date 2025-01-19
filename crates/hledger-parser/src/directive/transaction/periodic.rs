@@ -96,11 +96,12 @@ mod tests {
                             String::from("expenses"),
                             String::from("utilities")
                         ]),
-                        amount: Some(Amount {
+                        amount: vec![Amount {
                             quantity: Decimal::new(400, 0),
                             commodity: String::from("$"),
-                        }),
-                        price: None,
+                            price: None,
+                        }],
+                        is_amount_specified: true,
                         assertion: None,
                         is_virtual: false,
                     },
@@ -111,8 +112,8 @@ mod tests {
                             String::from("bank"),
                             String::from("checking")
                         ]),
-                        amount: None,
-                        price: None,
+                        amount: Vec::new(),
+                        is_amount_specified: false,
                         assertion: None,
                         is_virtual: false,
                     }
@@ -147,11 +148,12 @@ mod tests {
                             String::from("expenses"),
                             String::from("utilities")
                         ]),
-                        amount: Some(Amount {
+                        amount: vec![Amount {
                             quantity: Decimal::new(400, 0),
                             commodity: String::from("$"),
-                        }),
-                        price: None,
+                            price: None,
+                        }],
+                        is_amount_specified: true,
                         assertion: None,
                         is_virtual: false,
                     },
@@ -162,8 +164,8 @@ mod tests {
                             String::from("bank"),
                             String::from("checking")
                         ]),
-                        amount: None,
-                        price: None,
+                        amount: Vec::new(),
+                        is_amount_specified: false,
                         assertion: None,
                         is_virtual: false,
                     }
@@ -201,11 +203,12 @@ mod tests {
                             String::from("expenses"),
                             String::from("utilities")
                         ]),
-                        amount: Some(Amount {
+                        amount: vec![Amount {
                             quantity: Decimal::new(400, 0),
                             commodity: String::from("$"),
-                        }),
-                        price: None,
+                            price: None,
+                        }],
+                        is_amount_specified: true,
                         assertion: None,
                         is_virtual: false,
                     },
@@ -216,8 +219,8 @@ mod tests {
                             String::from("bank"),
                             String::from("checking")
                         ]),
-                        amount: None,
-                        price: None,
+                        amount: Vec::new(),
+                        is_amount_specified: false,
                         assertion: None,
                         is_virtual: false,
                     }
@@ -252,11 +255,12 @@ mod tests {
                             String::from("expenses"),
                             String::from("rent")
                         ]),
-                        amount: Some(Amount {
+                        amount: vec![Amount {
                             quantity: Decimal::new(1000, 0),
                             commodity: String::from("$"),
-                        }),
-                        price: None,
+                            price: None,
+                        }],
+                        is_amount_specified: true,
                         assertion: None,
                         is_virtual: true,
                     },
@@ -266,11 +270,12 @@ mod tests {
                             String::from("expenses"),
                             String::from("food")
                         ]),
-                        amount: Some(Amount {
+                        amount: vec![Amount {
                             quantity: Decimal::new(500, 0),
                             commodity: String::from("$"),
-                        }),
-                        price: None,
+                            price: None,
+                        }],
+                        is_amount_specified: true,
                         assertion: None,
                         is_virtual: true,
                     }

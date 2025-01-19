@@ -41,6 +41,7 @@ mod tests {
             Ok(Commodity::Amount(Amount {
                 commodity: String::from("$"),
                 quantity: Decimal::new(100_000, 2),
+                price: None,
             }))
         );
     }
@@ -56,6 +57,7 @@ mod tests {
             Ok(Commodity::Amount(Amount {
                 commodity: String::new(),
                 quantity: Decimal::new(10_000_000_000, 4),
+                price: None,
             }))
         );
     }
@@ -71,6 +73,7 @@ mod tests {
             Ok(Commodity::Amount(Amount {
                 commodity: String::from("USD"),
                 quantity: Decimal::new(1, 0),
+                price: None,
             }))
         );
     }

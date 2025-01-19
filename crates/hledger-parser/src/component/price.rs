@@ -46,7 +46,8 @@ mod tests {
             result,
             Ok(AmountPrice::Total(Amount {
                 commodity: String::from("$"),
-                quantity: Decimal::new(135, 2)
+                quantity: Decimal::new(135, 2),
+                price: None,
             }))
         );
     }
@@ -62,6 +63,7 @@ mod tests {
             Ok(AmountPrice::Unit(Amount {
                 commodity: String::from("$"),
                 quantity: Decimal::new(135, 2),
+                price: None,
             }))
         );
     }

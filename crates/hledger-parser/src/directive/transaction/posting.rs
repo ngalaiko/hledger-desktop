@@ -4,7 +4,7 @@ mod assertion;
 
 use crate::component::account_name::{account_name, AccountName};
 use crate::component::amount::{amount, Amount};
-use crate::component::price::{amount_price, AmountPrice};
+use crate::component::price::amount_price;
 use crate::component::status::{status, Status};
 use crate::component::whitespace::whitespace;
 use crate::directive::transaction::posting::assertion::assertion;
@@ -18,8 +18,8 @@ pub struct Posting {
     pub status: Option<Status>,
     pub account_name: AccountName,
     pub is_virtual: bool,
-    pub amount: Option<Amount>,
-    pub price: Option<AmountPrice>,
+    pub amount: Vec<Amount>,
+    pub is_amount_specified: bool,
     pub assertion: Option<Assertion>,
 }
 
@@ -46,8 +46,14 @@ pub fn posting<'a>() -> impl Parser<'a, &'a str, Posting, extra::Full<Rich<'a, c
                 status,
                 account_name,
                 is_virtual,
-                amount,
-                price,
+                is_amount_specified: amount.is_some(),
+                amount: amount
+                    .map(|amount| Amount {
+                        price: price.map(Box::new),
+                        ..amount
+                    })
+                    .map(|amount| vec![amount])
+                    .unwrap_or_default(),
                 assertion,
             },
         )
@@ -56,6 +62,8 @@ pub fn posting<'a>() -> impl Parser<'a, &'a str, Posting, extra::Full<Rich<'a, c
 #[cfg(test)]
 mod tests {
     use rust_decimal::Decimal;
+
+    use crate::AmountPrice;
 
     use super::*;
 
@@ -74,11 +82,12 @@ mod tests {
                     String::from("bank"),
                     String::from("checking")
                 ]),
-                amount: Some(Amount {
+                amount: vec![Amount {
                     quantity: Decimal::new(1, 0),
                     commodity: String::from("$"),
-                }),
-                price: None,
+                    price: None,
+                }],
+                is_amount_specified: true,
                 assertion: None,
                 is_virtual: false,
             })
@@ -100,8 +109,8 @@ mod tests {
                     String::from("bank"),
                     String::from("checking")
                 ]),
-                amount: None,
-                price: None,
+                amount: Vec::new(),
+                is_amount_specified: false,
                 assertion: None,
                 is_virtual: false,
             })
@@ -123,11 +132,12 @@ mod tests {
                     String::from("bank"),
                     String::from("checking"),
                 ]),
-                amount: Some(Amount {
+                amount: vec![Amount {
                     quantity: Decimal::new(1, 0),
                     commodity: String::from("$"),
-                }),
-                price: None,
+                    price: None,
+                }],
+                is_amount_specified: true,
                 assertion: None,
                 is_virtual: false,
             })
@@ -152,8 +162,8 @@ mod tests {
                     String::from("bank"),
                     String::from("checking"),
                 ]),
-                amount: None,
-                price: None,
+                amount: Vec::new(),
+                is_amount_specified: false,
                 assertion: None,
                 is_virtual: false,
             })
@@ -175,8 +185,8 @@ mod tests {
                     String::from("bank"),
                     String::from("checking"),
                 ]),
-                amount: None,
-                price: None,
+                amount: Vec::new(),
+                is_amount_specified: false,
                 assertion: None,
                 is_virtual: false,
             })
@@ -198,19 +208,21 @@ mod tests {
                     String::from("bank"),
                     String::from("checking"),
                 ]),
-                amount: Some(Amount {
+                amount: vec![Amount {
                     quantity: Decimal::new(1, 0),
                     commodity: String::from("EUR"),
-                }),
-                price: Some(AmountPrice::Total(Amount {
-                    quantity: Decimal::new(1, 0),
-                    commodity: String::from("USD"),
-                })),
+                    price: Some(Box::new(AmountPrice::Total(Amount {
+                        quantity: Decimal::new(1, 0),
+                        commodity: String::from("USD"),
+                        price: None,
+                    }))),
+                }],
+                is_amount_specified: true,
                 assertion: Some(Assertion {
-                    price: None,
                     amount: Amount {
                         quantity: Decimal::new(1, 0),
                         commodity: String::from("USD"),
+                        price: None,
                     },
                     is_subaccount_inclusive: false,
                     is_strict: false,
@@ -235,16 +247,17 @@ mod tests {
                     String::from("bank"),
                     String::from("checking"),
                 ]),
-                amount: Some(Amount {
+                amount: vec![Amount {
                     quantity: Decimal::new(1, 0),
                     commodity: String::from("USD"),
-                }),
-                price: None,
-                assertion: Some(Assertion {
                     price: None,
+                }],
+                is_amount_specified: true,
+                assertion: Some(Assertion {
                     amount: Amount {
                         quantity: Decimal::new(1, 0),
                         commodity: String::from("USD"),
+                        price: None,
                     },
                     is_subaccount_inclusive: false,
                     is_strict: true,
@@ -269,14 +282,17 @@ mod tests {
                     String::from("bank"),
                     String::from("checking"),
                 ]),
-                amount: Some(Amount {
+                amount: vec![Amount {
                     quantity: Decimal::new(1, 0),
                     commodity: String::from("USD"),
-                }),
-                price: Some(AmountPrice::Unit(Amount {
-                    quantity: Decimal::new(1, 0),
-                    commodity: String::from("EUR"),
-                })),
+                    price: Some(Box::new(AmountPrice::Unit(Amount {
+                        quantity: Decimal::new(1, 0),
+                        commodity: String::from("EUR"),
+                        price: None,
+                    }))),
+                }],
+                is_amount_specified: true,
+
                 assertion: None,
                 is_virtual: false,
             })
@@ -298,11 +314,12 @@ mod tests {
                     String::from("bank"),
                     String::from("checking"),
                 ]),
-                amount: Some(Amount {
+                amount: vec![Amount {
                     quantity: Decimal::new(1, 0),
                     commodity: String::from("$"),
-                }),
-                price: None,
+                    price: None,
+                }],
+                is_amount_specified: true,
                 assertion: None,
                 is_virtual: true,
             })
@@ -324,8 +341,8 @@ mod tests {
                     String::from("bank"),
                     String::from("checking $1"),
                 ]),
-                amount: None,
-                price: None,
+                amount: Vec::new(),
+                is_amount_specified: false,
                 assertion: None,
                 is_virtual: false,
             })

@@ -52,6 +52,7 @@ mod tests {
                 amount: Amount {
                     quantity: Decimal::new(135, 2),
                     commodity: String::from("$"),
+                    price: None,
                 },
             })
         );
@@ -71,6 +72,7 @@ mod tests {
                 amount: Amount {
                     quantity: Decimal::new(69_174_770_790_400, 8),
                     commodity: String::from("SEK"),
+                    price: None,
                 },
             })
         );
@@ -90,6 +92,7 @@ mod tests {
                 amount: Amount {
                     quantity: Decimal::new(135, 2),
                     commodity: String::from("$"),
+                    price: None,
                 },
             })
         );

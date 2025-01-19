@@ -78,11 +78,12 @@ mod tests {
                             String::from("bank"),
                             String::from("checking"),
                         ]),
-                        amount: Some(Amount {
+                        amount: vec![Amount {
                             quantity: Decimal::new(1, 0),
                             commodity: String::from("$"),
-                        }),
-                        price: None,
+                            price: None,
+                        }],
+                        is_amount_specified: true,
                         assertion: None,
                         is_virtual: false,
                     },
@@ -92,8 +93,8 @@ mod tests {
                             String::from("income"),
                             String::from("salary")
                         ]),
-                        amount: None,
-                        price: None,
+                        amount: Vec::new(),
+                        is_amount_specified: false,
                         assertion: None,
                         is_virtual: false,
                     }
@@ -129,11 +130,12 @@ mod tests {
                             String::from("bank"),
                             String::from("checking"),
                         ]),
-                        amount: Some(Amount {
+                        amount: vec![Amount {
                             quantity: Decimal::new(1, 0),
                             commodity: String::from("$"),
-                        }),
-                        price: None,
+                            price: None,
+                        }],
+                        is_amount_specified: true,
                         assertion: None,
                         is_virtual: false,
                     },
@@ -143,8 +145,8 @@ mod tests {
                             String::from("income"),
                             String::from("salary")
                         ]),
-                        amount: None,
-                        price: None,
+                        amount: Vec::new(),
+                        is_amount_specified: false,
                         assertion: None,
                         is_virtual: false,
                     }

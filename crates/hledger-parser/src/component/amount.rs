@@ -5,11 +5,38 @@ use crate::component::commodity::commodity;
 use crate::component::quantity::quantity;
 use crate::component::whitespace::whitespace;
 use crate::state::State;
+use crate::AmountPrice;
 
 #[derive(Debug, Default, Clone, Hash, PartialEq)]
 pub struct Amount {
     pub quantity: Decimal,
     pub commodity: String,
+    pub price: Option<Box<AmountPrice>>,
+}
+
+impl Amount {
+    #[allow(clippy::missing_panics_doc)]
+    #[must_use]
+    pub fn cost(&self) -> Option<Amount> {
+        match self.price.as_ref() {
+            None => None,
+            Some(price) => match price.as_ref() {
+                crate::AmountPrice::Total(price) if self.quantity.is_sign_positive() => {
+                    Some(price.clone())
+                }
+                crate::AmountPrice::Total(price) => {
+                    let mut price = price.clone();
+                    price.quantity.set_sign_negative(true);
+                    Some(price)
+                }
+                crate::AmountPrice::Unit(price) => Some(Amount {
+                    quantity: price.quantity.checked_mul(self.quantity).expect("overflow"),
+                    commodity: price.commodity.clone(),
+                    price: None,
+                }),
+            },
+        }
+    }
 }
 
 pub fn amount<'a>() -> impl Parser<'a, &'a str, Amount, extra::Full<Rich<'a, char>, State, ()>> {
@@ -25,6 +52,7 @@ pub fn amount<'a>() -> impl Parser<'a, &'a str, Amount, extra::Full<Rich<'a, cha
             Amount {
                 quantity,
                 commodity,
+                price: None,
             }
         });
     let quantity_sign_commodity = quantity()
@@ -39,6 +67,7 @@ pub fn amount<'a>() -> impl Parser<'a, &'a str, Amount, extra::Full<Rich<'a, cha
             Amount {
                 quantity,
                 commodity,
+                price: None,
             }
         });
     let sign_commodity_quantity = one_of("-+")
@@ -53,6 +82,7 @@ pub fn amount<'a>() -> impl Parser<'a, &'a str, Amount, extra::Full<Rich<'a, cha
             Amount {
                 quantity,
                 commodity,
+                price: None,
             }
         });
     let commodity_sign_quantity = commodity()
@@ -67,6 +97,7 @@ pub fn amount<'a>() -> impl Parser<'a, &'a str, Amount, extra::Full<Rich<'a, cha
             Amount {
                 quantity,
                 commodity,
+                price: None,
             }
         });
     let quantity_commodity = quantity()
@@ -75,6 +106,7 @@ pub fn amount<'a>() -> impl Parser<'a, &'a str, Amount, extra::Full<Rich<'a, cha
         .map(|(quantity, commodity)| Amount {
             quantity,
             commodity,
+            price: None,
         });
     let commodity_quantity = commodity()
         .then_ignore(whitespace().repeated())
@@ -82,19 +114,21 @@ pub fn amount<'a>() -> impl Parser<'a, &'a str, Amount, extra::Full<Rich<'a, cha
         .map(|(commodity, quantity)| Amount {
             quantity,
             commodity,
+            price: None,
         });
     let just_quantity = quantity().map(|quantity| Amount {
         quantity,
-        ..Amount::default()
+        commodity: String::new(),
+        price: None,
     });
     choice((
-        sign_quantity_commodity,
-        quantity_sign_commodity,
-        sign_commodity_quantity,
-        commodity_sign_quantity,
-        quantity_commodity,
-        commodity_quantity,
-        just_quantity,
+        sign_quantity_commodity.boxed(),
+        quantity_sign_commodity.boxed(),
+        sign_commodity_quantity.boxed(),
+        commodity_sign_quantity.boxed(),
+        quantity_commodity.boxed(),
+        commodity_quantity.boxed(),
+        just_quantity.boxed(),
     ))
 }
 
@@ -122,6 +156,7 @@ mod tests {
                 Amount {
                     quantity: Decimal::new(1, 0),
                     commodity: String::from("$"),
+                    price: None,
                 },
             ),
             (
@@ -129,6 +164,7 @@ mod tests {
                 Amount {
                     quantity: Decimal::new(4000, 0),
                     commodity: String::from("AAPL"),
+                    price: None,
                 },
             ),
             (
@@ -136,6 +172,7 @@ mod tests {
                 Amount {
                     quantity: Decimal::new(3, 0),
                     commodity: String::from("green apples"),
+                    price: None,
                 },
             ),
         ] {
@@ -152,6 +189,7 @@ mod tests {
                 Amount {
                     quantity: Decimal::new(-1, 0),
                     commodity: String::from("$"),
+                    price: None,
                 },
             ),
             (
@@ -159,6 +197,7 @@ mod tests {
                 Amount {
                     quantity: Decimal::new(-1, 0),
                     commodity: String::from("$"),
+                    price: None,
                 },
             ),
             (
@@ -166,6 +205,7 @@ mod tests {
                 Amount {
                     quantity: Decimal::new(1, 0),
                     commodity: String::from("$"),
+                    price: None,
                 },
             ),
             (
@@ -173,6 +213,7 @@ mod tests {
                 Amount {
                     quantity: Decimal::new(-1, 0),
                     commodity: String::from("$"),
+                    price: None,
                 },
             ),
             (
@@ -180,6 +221,7 @@ mod tests {
                 Amount {
                     quantity: Decimal::new(-1, 0),
                     commodity: String::from("USD"),
+                    price: None,
                 },
             ),
         ] {

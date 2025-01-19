@@ -104,6 +104,7 @@ mod tests {
                         amount: Amount {
                             quantity: Decimal::new(-1, 0),
                             commodity: String::from("$"),
+                            price: None,
                         },
                     },
                     AutoPosting {
@@ -116,6 +117,7 @@ mod tests {
                         amount: Amount {
                             quantity: Decimal::new(1, 0),
                             commodity: String::new(),
+                            price: None,
                         },
                     }
                 ],

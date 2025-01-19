@@ -184,82 +184,66 @@ mod posting {
             .build()
             .map_err(Error::Regex)?;
         Ok(Box::new(move |posting| {
-            if let Some(amount) = &posting.amount {
-                r.is_match(&amount.commodity)
-            } else {
-                false
-            }
+            posting
+                .amount
+                .iter()
+                .any(|amount| r.is_match(&amount.commodity))
         }))
     }
 
     pub fn amount(filter: &hledger_parser::AmountCondition) -> Filter {
         let filter = filter.clone();
         Box::new(move |posting| match &filter {
-            hledger_parser::AmountCondition::Equal(sign, mut amount) => {
-                let Some(posting_amount) = &posting.amount else {
-                    return false;
-                };
-                match sign {
-                    None => posting_amount.quantity.abs() == amount,
-                    Some(hledger_parser::AmountSign::Minus) => {
-                        amount.set_sign_negative(true);
-                        posting_amount.quantity == amount
-                    }
-                    Some(hledger_parser::AmountSign::Plus) => posting_amount.quantity == amount,
+            hledger_parser::AmountCondition::Equal(sign, mut amount) => match sign {
+                None => posting.amount.iter().any(|a| a.quantity.abs() == amount),
+                Some(hledger_parser::AmountSign::Minus) => {
+                    amount.set_sign_negative(true);
+                    posting.amount.iter().any(|a| a.quantity == amount)
                 }
-            }
-            hledger_parser::AmountCondition::Less(sign, mut amount) => {
-                let Some(posting_amount) = &posting.amount else {
-                    return false;
-                };
-                match sign {
-                    None => posting_amount.quantity.abs() < amount,
-                    Some(hledger_parser::AmountSign::Minus) => {
-                        amount.set_sign_negative(true);
-                        posting_amount.quantity < amount
-                    }
-                    Some(hledger_parser::AmountSign::Plus) => posting_amount.quantity < amount,
+                Some(hledger_parser::AmountSign::Plus) => {
+                    posting.amount.iter().any(|a| a.quantity == amount)
                 }
-            }
-            hledger_parser::AmountCondition::Greater(sign, mut amount) => {
-                let Some(posting_amount) = &posting.amount else {
-                    return false;
-                };
-                match sign {
-                    None => posting_amount.quantity.abs() > amount,
-                    Some(hledger_parser::AmountSign::Minus) => {
-                        amount.set_sign_negative(true);
-                        posting_amount.quantity > amount
-                    }
-                    Some(hledger_parser::AmountSign::Plus) => posting_amount.quantity > amount,
+            },
+            hledger_parser::AmountCondition::Less(sign, mut amount) => match sign {
+                None => posting.amount.iter().any(|a| a.quantity.abs() < amount),
+                Some(hledger_parser::AmountSign::Minus) => {
+                    amount.set_sign_negative(true);
+                    posting.amount.iter().any(|a| a.quantity < amount)
                 }
-            }
-            hledger_parser::AmountCondition::GreaterOrEqual(sign, mut amount) => {
-                let Some(posting_amount) = &posting.amount else {
-                    return false;
-                };
-                match sign {
-                    None => posting_amount.quantity.abs() >= amount,
-                    Some(hledger_parser::AmountSign::Minus) => {
-                        amount.set_sign_negative(true);
-                        posting_amount.quantity >= amount
-                    }
-                    Some(hledger_parser::AmountSign::Plus) => posting_amount.quantity >= amount,
+                Some(hledger_parser::AmountSign::Plus) => {
+                    posting.amount.iter().any(|a| a.quantity < amount)
                 }
-            }
-            hledger_parser::AmountCondition::LessOrEqual(sign, mut amount) => {
-                let Some(posting_amount) = &posting.amount else {
-                    return false;
-                };
-                match sign {
-                    None => posting_amount.quantity.abs() <= amount,
-                    Some(hledger_parser::AmountSign::Minus) => {
-                        amount.set_sign_negative(true);
-                        posting_amount.quantity <= amount
-                    }
-                    Some(hledger_parser::AmountSign::Plus) => posting_amount.quantity <= amount,
+            },
+            hledger_parser::AmountCondition::Greater(sign, mut amount) => match sign {
+                None => posting.amount.iter().any(|a| a.quantity.abs() > amount),
+                Some(hledger_parser::AmountSign::Minus) => {
+                    amount.set_sign_negative(true);
+                    posting.amount.iter().any(|a| a.quantity > amount)
                 }
-            }
+                Some(hledger_parser::AmountSign::Plus) => {
+                    posting.amount.iter().any(|a| a.quantity > amount)
+                }
+            },
+            hledger_parser::AmountCondition::GreaterOrEqual(sign, mut amount) => match sign {
+                None => posting.amount.iter().any(|a| a.quantity.abs() >= amount),
+                Some(hledger_parser::AmountSign::Minus) => {
+                    amount.set_sign_negative(true);
+                    posting.amount.iter().any(|a| a.quantity >= amount)
+                }
+                Some(hledger_parser::AmountSign::Plus) => {
+                    posting.amount.iter().any(|a| a.quantity >= amount)
+                }
+            },
+            hledger_parser::AmountCondition::LessOrEqual(sign, mut amount) => match sign {
+                None => posting.amount.iter().any(|a| a.quantity.abs() <= amount),
+                Some(hledger_parser::AmountSign::Minus) => {
+                    amount.set_sign_negative(true);
+                    posting.amount.iter().any(|a| a.quantity <= amount)
+                }
+                Some(hledger_parser::AmountSign::Plus) => {
+                    posting.amount.iter().any(|a| a.quantity <= amount)
+                }
+            },
         })
     }
 
